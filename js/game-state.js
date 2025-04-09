@@ -56,6 +56,12 @@ function startGame() {
     titleScreen.style.display = 'none';
   }
   
+  // Show the footer with New Game button
+  const footer = document.getElementById('game-footer');
+  if (footer) {
+    footer.classList.remove('hidden');
+  }
+  
   shuffleDeck();
   dealInitialHands();
   trumpCard = drawCard();

@@ -22,7 +22,7 @@
     </div>
   </main>
   
-  <footer>
+  <footer id="game-footer" class="hidden">
     <button id="new-game">New Game</button>
   </footer>
 
@@ -46,6 +46,7 @@
     // Add event listener for start game button
     document.getElementById('start-game').addEventListener('click', () => {
       console.log("Start game button clicked");
+      document.getElementById('game-footer').classList.remove('hidden');
       startGame();
     });
   </script>

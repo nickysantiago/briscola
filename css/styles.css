@@ -37,8 +37,9 @@ h4 { font-size: clamp(0.8rem, 2vw, 1rem); }
   flex-direction: column;
   gap: 5px;
   width: 100%;
-  height: calc(100vh - 100px);
+  height: 100vh;
   position: relative;
+  padding-bottom: 60px; /* Space for footer */
 }
 
 /* Title Screen Styling */
@@ -117,20 +118,21 @@ h4 { font-size: clamp(0.8rem, 2vw, 1rem); }
   font-size: clamp(0.8rem, 2.5vw, 1.1rem);
 }
 
-/* Player's hand at bottom */
+/* Player's hand - positioned 25% from bottom */
 .hand {
   position: fixed;
-  bottom: 10px;
+  bottom: 25vh; /* 25% from bottom of viewport */
   left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 0;
+  padding: 10px;
+  z-index: 20;
 }
 
 .hand h2 {
-  margin-bottom: 5px;
+  margin-bottom: 8px;
 }
 
 .cards-container {
@@ -140,7 +142,7 @@ h4 { font-size: clamp(0.8rem, 2vw, 1rem); }
   gap: 5px;
 }
 
-/* Play area in center */
+/* Play area in center, above the hand */
 .play-area {
   position: fixed;
   top: 40%;
@@ -243,6 +245,11 @@ footer {
   z-index: 30;
 }
 
+/* Hide the New Game button when not in a game */
+footer.hidden {
+  display: none;
+}
+
 #new-game {
   padding: clamp(6px, 1.5vw, 8px) clamp(12px, 3vw, 16px);
   background-color: #0277bd;
@@ -287,6 +294,10 @@ footer {
     width: 65px;
     height: 97px;
   }
+  
+  .hand {
+    bottom: 20vh; /* Adjust for smaller screens */
+  }
 }
 
 /* Landscape orientation improvements */
@@ -301,6 +312,6 @@ footer {
   }
   
   .hand {
-    bottom: 5px;
+    bottom: 15vh; /* Adjust for landscape */
   }
 }
