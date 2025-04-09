@@ -22,12 +22,14 @@ import {
   addCardToGptHand,
   drawCard,
   endGame,
-  removeCardFromPlayerHand
+  removeCardFromPlayerHand,
+  setStatusMessage
 } from './game-state.js';
 import { 
   renderGame, 
   createPlayField, 
-  addPlayerCardToPlayField 
+  addPlayerCardToPlayField,
+  updateStatusDisplay 
 } from './ui-renderer.js';
 import { makeGptPlay } from './ai-player.js';
 
@@ -41,29 +43,38 @@ function playCard(index) {
   setIsProcessingTrick(true);
   const playerCard = removeCardFromPlayerHand(index);
   
-  // If player leads, show their card first
-  if (playerLeads) {
-    createPlayField(playerCard);
+  // Create card animation effect
+  const selectedCard = document.querySelectorAll('.hand .card')[index];
+  if (selectedCard) {
+    selectedCard.classList.add('play-animation');
     
-    // Small delay before GPT plays
+    // Wait for animation before proceeding
     setTimeout(() => {
-      const gptCard = makeGptPlay(playerCard);
-      finishTrick(playerCard, gptCard);
-    }, CARD_ANIMATION_DELAY);
-  } else {
-    // If GPT led, player is responding to stored GPT card
-    if (!currentGptCard) {
-      console.error("No GPT card found!");
-      setIsProcessingTrick(false);
-      return;
-    }
-    
-    // Add player's card to the play field
-    addPlayerCardToPlayField(playerCard);
-    
-    // Finish the trick
-    finishTrick(playerCard, currentGptCard);
-    setCurrentGptCard(null); // Clear current GPT card
+      // If player leads, show their card first
+      if (playerLeads) {
+        createPlayField(playerCard);
+        
+        // Small delay before GPT plays
+        setTimeout(() => {
+          const gptCard = makeGptPlay(playerCard);
+          finishTrick(playerCard, gptCard);
+        }, CARD_ANIMATION_DELAY);
+      } else {
+        // If GPT led, player is responding to stored GPT card
+        if (!currentGptCard) {
+          console.error("No GPT card found!");
+          setIsProcessingTrick(false);
+          return;
+        }
+        
+        // Add player's card to the play field
+        addPlayerCardToPlayField(playerCard);
+        
+        // Finish the trick
+        finishTrick(playerCard, currentGptCard);
+        setCurrentGptCard(null); // Clear current GPT card
+      }
+    }, 500); // Time to match the animation duration
   }
 }
 
@@ -77,10 +88,14 @@ function finishTrick(playerCard, gptCard) {
   setTimeout(() => {
     if (winner === 'player') {
       incrementPlayerPoints(trickPoints);
-      alert(`You win the trick and gain ${trickPoints} points!`);
+      // Show message on screen instead of alert
+      setStatusMessage(`You win the trick and gain ${trickPoints} points!`);
+      updateStatusDisplay(true);
     } else {
       incrementGptPoints(trickPoints);
-      alert(`GPT wins the trick and gains ${trickPoints} points.`);
+      // Show message on screen instead of alert
+      setStatusMessage(`GPT wins the trick and gains ${trickPoints} points.`);
+      updateStatusDisplay(true);
     }
     
     // Draw new cards if any remain
@@ -108,8 +123,13 @@ function finishTrick(playerCard, gptCard) {
     if (playerHand.length === 0 && gptHand.length === 0) {
       endGame();
     } else {
-      setIsProcessingTrick(false); // Reset processing flag
-      renderGame();
+      // Set a timeout to reset the status message
+      setTimeout(() => {
+        setStatusMessage(playerLeads ? "You lead the next trick" : "GPT leads the next trick");
+        updateStatusDisplay(false);
+        setIsProcessingTrick(false); // Reset processing flag
+        renderGame();
+      }, 2000); // Show message for 2 seconds
     }
   }, CARD_ANIMATION_DELAY);
 }

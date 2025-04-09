@@ -11,7 +11,8 @@ import {
   playerLeads, 
   isProcessingTrick,
   setCurrentGptCard,
-  setIsProcessingTrick
+  setIsProcessingTrick,
+  getStatusMessage
 } from './game-state.js';
 import { makeGptPlay } from './ai-player.js';
 
@@ -27,7 +28,7 @@ function renderGame() {
       <h4>Cards left in deck: ${deck.length}</h4>
     </div>
     <div class="status">
-      ${playerLeads ? "You lead the next trick" : "GPT leads the next trick"}
+      ${getStatusMessage()}
     </div>
     <div class="gpt-hand-info">
       <h2>GPT's Hand: ${gptHand.length} cards</h2>
@@ -128,6 +129,18 @@ function addPlayerCardToPlayField(playerCard) {
   `;
 }
 
+// New function to update status display with highlight effect
+function updateStatusDisplay(highlight) {
+  const statusElement = document.querySelector('.status');
+  if (statusElement) {
+    if (highlight) {
+      statusElement.classList.add('highlight');
+    } else {
+      statusElement.classList.remove('highlight');
+    }
+  }
+}
+
 export {
   renderGame,
   renderCard,
@@ -135,5 +148,6 @@ export {
   createPlayField,
   addGptCardToPlayField,
   createGptPlayField,
-  addPlayerCardToPlayField
+  addPlayerCardToPlayField,
+  updateStatusDisplay
 };

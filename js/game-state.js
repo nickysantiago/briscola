@@ -14,6 +14,7 @@ let trumpCard = null;
 let playerLeads = true;
 let isProcessingTrick = false;
 let currentGptCard = null;
+let statusMessage = "Game starting...";
 
 // Core game functions
 function shuffleDeck() {
@@ -51,10 +52,13 @@ function startGame() {
   dealInitialHands();
   trumpCard = drawCard();
   
+  statusMessage = "You lead the first trick";
+  
   renderGame();
   
   // If GPT should lead first, trigger its play automatically
   if (!playerLeads) {
+    statusMessage = "GPT leads the first trick";
     setTimeout(() => {
       if (!isProcessingTrick) {
         makeGptPlay();
@@ -68,11 +72,13 @@ function endGame() {
                playerPoints < gptPoints ? 'GPT wins 😢' : 
                'It\'s a tie!';
                
-  alert(`Game Over! Final score:\nYou: ${playerPoints}\nGPT: ${gptPoints}\n${result}`);
+  // Use on-screen message instead of alert
+  statusMessage = `Game Over! Final score: You: ${playerPoints} | GPT: ${gptPoints} | ${result}`;
+  renderGame();
   
   setTimeout(() => {
     startGame();
-  }, 500);
+  }, 3000);
 }
 
 // Helper function for card string representation
@@ -134,4 +140,13 @@ export function removeCardFromPlayerHand(index) {
 
 export function removeCardFromGptHand(index) {
   return gptHand.splice(index, 1)[0];
+}
+
+// Status message handling
+export function setStatusMessage(message) {
+  statusMessage = message;
+}
+
+export function getStatusMessage() {
+  return statusMessage;
 }
