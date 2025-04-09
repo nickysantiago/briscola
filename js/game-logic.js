@@ -10,6 +10,7 @@ import {
   playerLeads,
   isProcessingTrick,
   currentGptCard,
+  gameActive,
   deck, 
   playerHand, 
   gptHand,
@@ -35,8 +36,8 @@ import { makeGptPlay } from './ai-player.js';
 
 // Play card from player's hand
 function playCard(index) {
-  // Prevent playing during trick processing
-  if (isProcessingTrick) {
+  // Prevent playing if game is not active or during trick processing
+  if (!gameActive || isProcessingTrick) {
     return;
   }
   

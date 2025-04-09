@@ -10,6 +10,7 @@ import {
   deck, 
   playerLeads, 
   isProcessingTrick,
+  gameActive,
   setCurrentGptCard,
   setIsProcessingTrick,
   getStatusMessage
@@ -22,6 +23,16 @@ function renderGame() {
   
   if (!gameDiv) {
     console.error("Game div not found!");
+    return;
+  }
+  
+  // If no active game, don't render the game board
+  if (!gameActive) {
+    // Show the title screen if it's hidden
+    const titleScreen = document.getElementById('title-screen');
+    if (titleScreen && titleScreen.style.display === 'none') {
+      titleScreen.style.display = 'flex';
+    }
     return;
   }
   

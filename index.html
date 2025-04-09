@@ -14,7 +14,11 @@
   <main>
     <div id="game">
       <!-- Game will be rendered here by JavaScript -->
-      <div style="text-align: center; padding: 20px;">Loading game...</div>
+      <div id="title-screen">
+        <h2>Welcome to Brisca</h2>
+        <p>A traditional Spanish card game</p>
+        <button id="start-game" class="action-button">Start Game</button>
+      </div>
     </div>
   </main>
   
@@ -34,25 +38,15 @@
     document.getElementById('new-game').addEventListener('click', () => {
       console.log("New game button clicked");
       startGame();
+      
+      // Remove pulsing animation when starting a new game
+      document.getElementById('new-game').classList.remove('pulse');
     });
     
-    // Initialize game on load
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log("DOM loaded, starting game...");
-      setTimeout(() => {
-        try {
-          startGame();
-          console.log("Game started");
-        } catch(err) {
-          console.error("Error starting game:", err);
-          document.getElementById('game').innerHTML = `
-            <div style="color: red; padding: 20px;">
-              <h2>Error Loading Game</h2>
-              <p>${err.message}</p>
-            </div>
-          `;
-        }
-      }, 100); // Small delay to ensure DOM is fully ready
+    // Add event listener for start game button
+    document.getElementById('start-game').addEventListener('click', () => {
+      console.log("Start game button clicked");
+      startGame();
     });
   </script>
 </body>

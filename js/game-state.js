@@ -14,6 +14,7 @@ let playerLeads = true;
 let isProcessingTrick = false;
 let currentGptCard = null;
 let statusMessage = "Game starting...";
+let gameActive = false;
 
 // Core game functions
 function shuffleDeck() {
@@ -47,6 +48,13 @@ function startGame() {
   playerPoints = 0;
   gptPoints = 0;
   playerLeads = true;
+  gameActive = true;
+  
+  // Remove title screen
+  const titleScreen = document.getElementById('title-screen');
+  if (titleScreen) {
+    titleScreen.style.display = 'none';
+  }
   
   shuffleDeck();
   dealInitialHands();
@@ -65,6 +73,8 @@ function startGame() {
 }
 
 function endGame() {
+  gameActive = false;
+  
   let result = playerPoints > gptPoints ? '🎉 You win!' : 
                playerPoints < gptPoints ? 'GPT wins 😢' : 
                'It\'s a tie!';
@@ -91,13 +101,17 @@ function endGame() {
       <p>Your Points: ${playerPoints}</p>
       <p>GPT Points: ${gptPoints}</p>
     </div>
+    <p style="margin-top: 15px;">Click "New Game" to play again</p>
   `;
   playArea.appendChild(gameOverDisplay);
   
-  // Wait a bit longer before starting a new game
-  setTimeout(() => {
-    startGame();
-  }, 3000);
+  // Add pulsing effect to New Game button
+  const newGameButton = document.getElementById('new-game');
+  if (newGameButton) {
+    newGameButton.classList.add('pulse');
+  }
+  
+  // We do NOT auto-start a new game anymore
 }
 
 // Helper function for card string representation
@@ -116,6 +130,7 @@ export {
   playerLeads,
   isProcessingTrick,
   currentGptCard,
+  gameActive,
   shuffleDeck,
   drawCard,
   dealInitialHands,
