@@ -1,4 +1,5 @@
 // ui-renderer.js - UI rendering functions
+// mobile-friendly improvements - 04/08/2025
 
 import { 
   playerHand, 
@@ -21,19 +22,21 @@ function renderGame() {
       <h3>Trump Card:</h3>
       ${renderCardImage(trumpCard, -1, false)}
     </div>
-    <div class="hand">
-      <h2>Your Hand (${playerHand.length}):</h2>
-      ${playerHand.map((card, index) => renderCard(card, index)).join('')}
-    </div>
-    <div class="gpt-hand-info">
-      <h2>GPT's Hand: ${gptHand.length} cards</h2>
-    </div>
     <div class="field">
       <h3>Your Points: ${playerPoints} | GPT Points: ${gptPoints}</h3>
       <h4>Cards left in deck: ${deck.length}</h4>
     </div>
     <div class="status">
       ${playerLeads ? "You lead the next trick" : "GPT leads the next trick"}
+    </div>
+    <div class="gpt-hand-info">
+      <h2>GPT's Hand: ${gptHand.length} cards</h2>
+    </div>
+    <div class="hand">
+      <h2>Your Hand (${playerHand.length}):</h2>
+      <div class="cards-container">
+        ${playerHand.map((card, index) => renderCard(card, index)).join('')}
+      </div>
     </div>
   `;
   

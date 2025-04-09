@@ -1,4 +1,4 @@
-/* styles.css - Game styling */
+/* styles.css - Game styling with mobile-friendly improvements */
 
 * {
   box-sizing: border-box;
@@ -10,39 +10,57 @@ body {
   font-family: 'Arial', sans-serif;
   line-height: 1.6;
   color: #333;
-  max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 10px;
   background-color: #f5f5f5;
+  max-width: 100%;
 }
 
 header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 h1, h2, h3, h4 {
   margin-bottom: 10px;
 }
 
+/* Responsive font sizes */
+h1 { font-size: clamp(1.5rem, 5vw, 2.5rem); }
+h2 { font-size: clamp(1.2rem, 4vw, 1.8rem); }
+h3 { font-size: clamp(1rem, 3.5vw, 1.5rem); }
+h4 { font-size: clamp(0.9rem, 3vw, 1.2rem); }
+
 #game {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
+  width: 100%;
 }
 
+/* Horizontal layout for trump card */
 .trump-card {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  margin-bottom: 20px;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
 }
 
+/* Horizontal layout for hands */
 .hand {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
+}
+
+.cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
 }
 
 .hand .card {
@@ -54,14 +72,14 @@ h1, h2, h3, h4 {
   transform: translateY(-10px);
 }
 
+/* Responsive card styling */
 .card {
-  width: 120px;
-  height: 180px;
+  width: clamp(80px, 20vw, 120px);
+  height: clamp(120px, 30vw, 180px);
   border-radius: 10px;
-  margin: 5px;
   background-color: #fff;
   border: 1px solid #ccc;
-  padding: 10px;
+  padding: 5px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -80,24 +98,26 @@ h1, h2, h3, h4 {
 
 .field {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .play-field {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 20px 0;
-  padding: 20px;
+  margin: 15px 0;
+  padding: 15px;
   background-color: #e0f7fa;
   border-radius: 10px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
+/* Horizontal layout for played cards */
 .played-cards {
   display: flex;
   justify-content: center;
-  gap: 50px;
+  gap: clamp(20px, 5vw, 50px);
+  flex-wrap: wrap;
 }
 
 .player-played, .gpt-played {
@@ -109,32 +129,69 @@ h1, h2, h3, h4 {
 
 .status {
   text-align: center;
-  font-size: 1.2em;
+  font-size: clamp(1rem, 3.5vw, 1.2em);
   font-weight: bold;
   color: #0277bd;
-  margin: 20px 0;
+  margin: 15px 0;
 }
 
 .gpt-hand-info {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 footer {
   text-align: center;
-  margin-top: 30px;
+  margin-top: 20px;
+  padding-bottom: 20px;
 }
 
 #new-game {
-  padding: 10px 20px;
+  padding: clamp(8px, 2vw, 10px) clamp(15px, 4vw, 20px);
   background-color: #0277bd;
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 1.1em;
+  font-size: clamp(0.9rem, 3vw, 1.1em);
 }
 
 #new-game:hover {
   background-color: #01579b;
+}
+
+/* Media queries for better responsiveness */
+@media (max-width: 480px) {
+  body {
+    padding: 5px;
+  }
+  
+  .card {
+    width: 70px;
+    height: 105px;
+  }
+  
+  .play-field {
+    padding: 10px;
+  }
+}
+
+/* Landscape orientation improvements */
+@media (orientation: landscape) and (max-height: 500px) {
+  .card {
+    width: 60px;
+    height: 90px;
+  }
+  
+  .trump-card, .field, .status {
+    margin-bottom: 5px;
+  }
+  
+  header {
+    margin-bottom: 5px;
+  }
+  
+  h1, h2, h3, h4 {
+    margin-bottom: 5px;
+  }
 }
