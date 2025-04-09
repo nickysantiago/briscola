@@ -5,28 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Brisca Card Game</title>
   <link rel="stylesheet" href="css/styles.css">
-  <script type="module" src="js/main.js"></script>
 </head>
 <body>
   <header>
-    <h1>Brisca Card Game</h1>
+    <h1>Brisca</h1>
   </header>
   
   <main>
     <div id="game">
       <!-- Game will be rendered here by JavaScript -->
+      <div style="text-align: center; padding: 20px;">Loading game...</div>
     </div>
   </main>
   
   <footer>
     <button id="new-game">New Game</button>
-    <script>
-      document.getElementById('new-game').addEventListener('click', () => {
-        import('./js/game-state.js').then(module => {
-          module.startGame();
-        });
-      });
-    </script>
   </footer>
+
+  <!-- Scripts -->
+  <script type="module">
+    import { startGame } from './js/game-state.js';
+    import { playCard } from './js/game-logic.js';
+
+    // Make playCard available globally
+    window.playCard = playCard;
+    
+    // Add event listener for new game button
+    document.getElementById('new-game').addEventListener('click', () => {
+      console.log("New game button clicked");
+      startGame();
+    });
+    
+    // Initialize game on load
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log("DOM loaded, starting game...");
+      setTimeout(() => {
+        try {
+          startGame();
+          console.log("Game started");
+        } catch(err) {
+          console.error("Error starting game:", err);
+          document.getElementById('game').innerHTML = `
+            <div style="color: red; padding: 20px;">
+              <h2>Error Loading Game</h2>
+              <p>${err.message}</p>
+            </div>
+          `;
+        }
+      }, 100); // Small delay to ensure DOM is fully ready
+    });
+  </script>
 </body>
 </html>

@@ -85,14 +85,74 @@ function makeGptPlay(playerCard = null) {
   
   const gptCard = removeCardFromGptHand(gptCardIndex);
   
-  // If GPT leads, display its card
+  // Animate GPT's card play when it leads
   if (!playerLeads) {
-    createGptPlayField(gptCard);
+    // Create a "floating" card that moves from GPT hand area to play area
+    const cardElement = document.createElement('div');
+    cardElement.className = `card ${gptCard.suit === trumpCard.suit ? 'trump' : ''}`;
+    cardElement.style.backgroundImage = `url('cards/${gptCard.value}_of_${gptCard.suit.toLowerCase()}.png')`;
+    cardElement.style.position = 'fixed';
+    
+    // Start from GPT hand area (top of screen)
+    cardElement.style.top = '50px';
+    cardElement.style.left = '50%';
+    cardElement.style.transform = 'translateX(-50%)';
+    cardElement.style.zIndex = '100';
+    cardElement.innerHTML = `${gptCard.value} of ${gptCard.suit}`;
+    document.body.appendChild(cardElement);
+    
+    // Get play area position
+    const playArea = document.getElementById('play-area');
+    const playAreaRect = playArea.getBoundingClientRect();
+    
+    // Calculate destination (center of play area)
+    setTimeout(() => {
+      cardElement.style.top = `${playAreaRect.top + 50}px`;
+      
+      // Wait for animation to complete
+      setTimeout(() => {
+        // Remove the floating card
+        document.body.removeChild(cardElement);
+        // Show in the play field
+        createGptPlayField(gptCard);
+      }, 500);
+    }, 10);
+    
     return gptCard; // Return card but don't finish trick yet - player needs to respond
   }
   
-  // Update the play field with GPT's card when responding to player
-  addGptCardToPlayField(gptCard);
+  // If responding to player, add GPT's card to play field with animation
+  // Create a "floating" card that moves to play area
+  const cardElement = document.createElement('div');
+  cardElement.className = `card ${gptCard.suit === trumpCard.suit ? 'trump' : ''}`;
+  cardElement.style.backgroundImage = `url('cards/${gptCard.value}_of_${gptCard.suit.toLowerCase()}.png')`;
+  cardElement.style.position = 'fixed';
+  
+  // Start from GPT hand area (top of screen)
+  cardElement.style.top = '50px';
+  cardElement.style.right = '25%';
+  cardElement.style.zIndex = '100';
+  cardElement.innerHTML = `${gptCard.value} of ${gptCard.suit}`;
+  document.body.appendChild(cardElement);
+  
+  // Get play area position
+  const playArea = document.getElementById('play-area');
+  const playField = playArea.querySelector('.play-field');
+  const playAreaRect = playField.getBoundingClientRect();
+  
+  // Calculate destination (right side of play field)
+  setTimeout(() => {
+    cardElement.style.top = `${playAreaRect.top + 50}px`;
+    cardElement.style.right = `${window.innerWidth - playAreaRect.right + 20}px`;
+    
+    // Wait for animation to complete
+    setTimeout(() => {
+      // Remove the floating card
+      document.body.removeChild(cardElement);
+      // Add to the play field
+      addGptCardToPlayField(gptCard);
+    }, 500);
+  }, 10);
   
   return gptCard;
 }

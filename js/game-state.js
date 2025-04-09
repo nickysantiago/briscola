@@ -1,8 +1,7 @@
 // game-state.js - Game state management and core functions
 
 import { SUITS, VALUES, INITIAL_HAND_SIZE } from './constants.js';
-import { renderGame } from './ui-renderer.js';
-import { makeGptPlay } from './ai-player.js';
+import { renderGame, updateStatusDisplay } from './ui-renderer.js';
 
 // Game state
 let deck = [];
@@ -42,6 +41,7 @@ function dealInitialHands() {
 }
 
 function startGame() {
+  console.log("Starting game...");
   isProcessingTrick = false;
   currentGptCard = null;
   playerPoints = 0;
@@ -56,15 +56,12 @@ function startGame() {
   
   renderGame();
   
-  // If GPT should lead first, trigger its play automatically
-  if (!playerLeads) {
-    statusMessage = "GPT leads the first trick";
-    setTimeout(() => {
-      if (!isProcessingTrick) {
-        makeGptPlay();
-      }
-    }, 1000);
-  }
+  console.log("Game initialized with:", {
+    deckSize: deck.length,
+    playerHandSize: playerHand.length,
+    gptHandSize: gptHand.length,
+    trumpCard: cardStr(trumpCard)
+  });
 }
 
 function endGame() {
@@ -73,9 +70,31 @@ function endGame() {
                'It\'s a tie!';
                
   // Use on-screen message instead of alert
-  statusMessage = `Game Over! Final score: You: ${playerPoints} | GPT: ${gptPoints} | ${result}`;
-  renderGame();
+  setStatusMessage(`Game Over! Final score: You: ${playerPoints} | GPT: ${gptPoints} | ${result}`);
+  updateStatusDisplay(true);
   
+  // Remove any remaining play field
+  const playArea = document.getElementById('play-area');
+  if (playArea) {
+    playArea.innerHTML = '';
+  }
+  
+  // Create game over display
+  const gameOverDisplay = document.createElement('div');
+  gameOverDisplay.className = 'play-field';
+  gameOverDisplay.style.backgroundColor = playerPoints > gptPoints ? '#e8f5e9' : 
+                                           playerPoints < gptPoints ? '#ffebee' : 
+                                           '#e3f2fd';
+  gameOverDisplay.innerHTML = `
+    <h2>${result}</h2>
+    <div style="margin: 10px 0; font-size: 1.2em;">
+      <p>Your Points: ${playerPoints}</p>
+      <p>GPT Points: ${gptPoints}</p>
+    </div>
+  `;
+  playArea.appendChild(gameOverDisplay);
+  
+  // Wait a bit longer before starting a new game
   setTimeout(() => {
     startGame();
   }, 3000);
@@ -83,10 +102,10 @@ function endGame() {
 
 // Helper function for card string representation
 function cardStr(card) {
-  return `${card.value} of ${card.suit}`;
+  return card ? `${card.value} of ${card.suit}` : 'No card';
 }
 
-// Export state and functions
+// Export state getters and functions
 export {
   deck,
   playerHand,
@@ -105,7 +124,7 @@ export {
   cardStr
 };
 
-// Export setters for state modification
+// Export setters and getters for state modification
 export function setPlayerLeads(value) {
   playerLeads = value;
 }

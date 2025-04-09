@@ -17,22 +17,48 @@ import {
 import { makeGptPlay } from './ai-player.js';
 
 function renderGame() {
+  console.log("Rendering game...");
   const gameDiv = document.getElementById('game');
+  
+  if (!gameDiv) {
+    console.error("Game div not found!");
+    return;
+  }
+  
+  let trumpHtml = "";
+  if (trumpCard) {
+    trumpHtml = renderCardImage(trumpCard, -1, false);
+  } else {
+    trumpHtml = `<div class="card">No trump card</div>`;
+    console.warn("No trump card found when rendering");
+  }
+  
   gameDiv.innerHTML = `
+    <div class="game-info">
+      <div class="game-info-item">
+        <strong>Your Points:</strong> ${playerPoints}
+      </div>
+      <div class="game-info-item">
+        <strong>GPT Points:</strong> ${gptPoints}
+      </div>
+      <div class="game-info-item">
+        <strong>Deck:</strong> ${deck.length} | <strong>GPT Hand:</strong> ${gptHand.length}
+      </div>
+    </div>
+    
     <div class="trump-card">
-      <h3>Trump Card:</h3>
-      ${renderCardImage(trumpCard, -1, false)}
+      <h3>Trump:</h3>
+      ${trumpHtml}
     </div>
-    <div class="field">
-      <h3>Your Points: ${playerPoints} | GPT Points: ${gptPoints}</h3>
-      <h4>Cards left in deck: ${deck.length}</h4>
-    </div>
+    
     <div class="status">
       ${getStatusMessage()}
     </div>
-    <div class="gpt-hand-info">
-      <h2>GPT's Hand: ${gptHand.length} cards</h2>
+    
+    <div class="play-area" id="play-area">
+      <!-- Play field will appear here when cards are played -->
     </div>
+    
     <div class="hand">
       <h2>Your Hand (${playerHand.length}):</h2>
       <div class="cards-container">
@@ -48,14 +74,22 @@ function renderGame() {
   }
   
   // If GPT should lead, trigger its play automatically
-  if (!playerLeads && !isProcessingTrick) {
+  if (!playerLeads && !isProcessingTrick && gptHand.length > 0) {
+    console.log("GPT leads, triggering play...");
     setIsProcessingTrick(true); // Prevent multiple plays
     setTimeout(() => {
-      const gptCard = makeGptPlay();
-      setCurrentGptCard(gptCard);
-      setIsProcessingTrick(false);
+      try {
+        const gptCard = makeGptPlay();
+        setCurrentGptCard(gptCard);
+      } catch (err) {
+        console.error("Error during GPT play:", err);
+      } finally {
+        setIsProcessingTrick(false);
+      }
     }, 1000);
   }
+  
+  console.log("Game render complete");
 }
 
 function renderCard(card, index) {
@@ -65,7 +99,12 @@ function renderCard(card, index) {
 }
 
 function renderCardImage(card, index, clickable) {
-  const isTrump = card.suit === trumpCard.suit;
+  if (!card) {
+    console.error("Trying to render null or undefined card");
+    return `<div class="card">Invalid Card</div>`;
+  }
+  
+  const isTrump = trumpCard && card.suit === trumpCard.suit;
   const filename = `cards/${card.value}_of_${card.suit.toLowerCase()}.png`;
   
   // Use window.playCard to ensure it uses the global function
@@ -78,6 +117,7 @@ function renderCardImage(card, index, clickable) {
 }
 
 function createPlayField(playerCard) {
+  console.log("Creating play field with player card:", playerCard);
   let playField = document.createElement('div');
   playField.className = 'play-field';
   playField.innerHTML = `
@@ -88,21 +128,36 @@ function createPlayField(playerCard) {
       </div>
     </div>
   `;
-  document.getElementById('game').appendChild(playField);
+  
+  const playArea = document.getElementById('play-area');
+  if (playArea) {
+    playArea.innerHTML = ''; // Clear existing content
+    playArea.appendChild(playField);
+  } else {
+    console.error("Play area not found when creating play field");
+    document.getElementById('game').appendChild(playField);
+  }
+  
   return playField;
 }
 
 function addGptCardToPlayField(gptCard) {
+  console.log("Adding GPT card to play field:", gptCard);
   const playField = document.querySelector('.play-field');
-  playField.querySelector('.played-cards').innerHTML += `
-    <div class="gpt-played">
-      <h4>GPT's Play:</h4>
-      ${renderCardImage(gptCard, -1, false)}
-    </div>
-  `;
+  if (playField) {
+    playField.querySelector('.played-cards').innerHTML += `
+      <div class="gpt-played">
+        <h4>GPT's Play:</h4>
+        ${renderCardImage(gptCard, -1, false)}
+      </div>
+    `;
+  } else {
+    console.error("Play field not found when adding GPT card");
+  }
 }
 
 function createGptPlayField(gptCard) {
+  console.log("Creating GPT play field with card:", gptCard);
   let playField = document.createElement('div');
   playField.className = 'play-field';
   playField.innerHTML = `
@@ -116,17 +171,30 @@ function createGptPlayField(gptCard) {
       </div>
     </div>
   `;
-  document.getElementById('game').appendChild(playField);
+  
+  const playArea = document.getElementById('play-area');
+  if (playArea) {
+    playArea.innerHTML = ''; // Clear existing content
+    playArea.appendChild(playField);
+  } else {
+    console.error("Play area not found when creating GPT play field");
+    document.getElementById('game').appendChild(playField);
+  }
 }
 
 function addPlayerCardToPlayField(playerCard) {
+  console.log("Adding player card to play field:", playerCard);
   const playField = document.querySelector('.play-field');
-  playField.querySelector('.played-cards').innerHTML += `
-    <div class="player-played">
-      <h4>Your Play:</h4>
-      ${renderCardImage(playerCard, -1, false)}
-    </div>
-  `;
+  if (playField) {
+    playField.querySelector('.played-cards').innerHTML += `
+      <div class="player-played">
+        <h4>Your Play:</h4>
+        ${renderCardImage(playerCard, -1, false)}
+      </div>
+    `;
+  } else {
+    console.error("Play field not found when adding player card");
+  }
 }
 
 // New function to update status display with highlight effect
