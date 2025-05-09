@@ -115,17 +115,18 @@ function finishTrick(playerCard, gptCard) {
   // Update who leads next based on who won
   setPlayerLeads(winner === 'player');
   
+  // Update the status message IMMEDIATELY about who leads next
+  // This fixes the delay in banner updates
+  setStatusMessage(winner === 'player' 
+    ? `You win the trick and gain ${trickPoints} points!` 
+    : `GPT wins the trick and gains ${trickPoints} points.`);
+  updateStatusDisplay(true);
+  
   setTimeout(() => {
     if (winner === 'player') {
       incrementPlayerPoints(trickPoints);
-      // Show message on screen instead of alert
-      setStatusMessage(`You win the trick and gain ${trickPoints} points!`);
-      updateStatusDisplay(true);
     } else {
       incrementGptPoints(trickPoints);
-      // Show message on screen instead of alert
-      setStatusMessage(`GPT wins the trick and gains ${trickPoints} points.`);
-      updateStatusDisplay(true);
     }
     
     // Clear the play area after a delay
@@ -157,13 +158,15 @@ function finishTrick(playerCard, gptCard) {
       if (playerHand.length === 0 && gptHand.length === 0) {
         endGame();
       } else {
-        // Set a timeout to reset the status message
-        setTimeout(() => {
-          setStatusMessage(playerLeads ? "You lead the next trick" : "GPT leads the next trick");
-          updateStatusDisplay(false);
-          setIsProcessingTrick(false); // Reset processing flag
-          renderGame();
-        }, 1000); // Show message for 1 second (shorter for better flow)
+        // Update the status message for the next leader BEFORE rendering game
+        // This fixes the timing issue with the status message
+        setStatusMessage(playerLeads ? "You lead the next trick" : "GPT leads the next trick");
+        updateStatusDisplay(false);
+        setIsProcessingTrick(false); // Reset processing flag
+        
+        // Now render game with the correct message already set
+        renderGame();
+        
       }
     }, 1500); // Show the played cards for 1.5 seconds before clearing
   }, CARD_ANIMATION_DELAY);

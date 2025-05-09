@@ -1,0 +1,34 @@
+/* cards.css - Card styling and animations */
+
+/* Card styling and animations */
+.card {
+  width: clamp(70px, 18vw, 110px);
+  height: clamp(105px, 27vw, 165px);
+  border-radius: 10px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-size: cover;
+  background-position: center;
+  font-weight: bold;
+  color: transparent; /* Hide text since we have images */
+  transition: transform 0.3s ease, top 0.5s ease, left 0.5s ease, position 0.5s ease;
+}
+
+.hand .card {
+  cursor: pointer;
+}
+
+.hand .card:hover {
+  transform: translateY(-10px);
+}
+
+.trump {
+  border: 3px solid gold;
+  box-shadow: 0 0 10px gold;
+}

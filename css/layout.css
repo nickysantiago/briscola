@@ -1,0 +1,146 @@
+/* layout.css - Layout and positioning */
+
+#game {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  padding-bottom: 60px; /* Space for footer */
+}
+
+/* Title Screen Styling */
+#title-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 70vh;
+  background-color: rgba(224, 247, 250, 0.8);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#title-screen h2 {
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  margin-bottom: 15px;
+  color: #0277bd;
+}
+
+#title-screen p {
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  margin-bottom: 30px;
+  color: #555;
+}
+
+/* Compact game info area */
+.game-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 5px 0;
+  padding: 5px 10px;
+  background-color: #e8f5e9;
+  border-radius: 5px;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
+}
+
+.game-info-item {
+  text-align: center;
+}
+
+/* Trump card display */
+.trump-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 5px;
+  flex-wrap: wrap;
+}
+
+.trump-card h3 {
+  margin: 0;
+  font-size: clamp(0.8rem, 2.5vw, 1.1rem);
+}
+
+/* Player's hand - positioned 25% from bottom */
+.hand {
+  position: fixed;
+  bottom: 25vh; /* 25% from bottom of viewport */
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  z-index: 20;
+}
+
+.hand h2 {
+  margin-bottom: 8px;
+}
+
+.cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+}
+
+/* Play area in center, above the hand */
+.play-area {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Play field styling */
+.play-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 5px 0;
+  padding: 10px;
+  background-color: rgba(224, 247, 250, 0.9);
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Horizontal layout for played cards */
+.played-cards {
+  display: flex;
+  justify-content: center;
+  gap: clamp(15px, 4vw, 30px);
+  flex-wrap: wrap;
+}
+
+.player-played, .gpt-played {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+footer {
+  text-align: center;
+  padding: 10px 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+}
+
+/* Hide the New Game button when not in a game */
+footer.hidden {
+  display: none;
+}

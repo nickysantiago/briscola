@@ -1,0 +1,29 @@
+/* responsive.css - Media queries for responsive design */
+
+/* Media queries for better responsiveness */
+@media (max-width: 480px) {
+  .card {
+    width: 65px;
+    height: 97px;
+  }
+  
+  .hand {
+    bottom: 20vh; /* Adjust for smaller screens */
+  }
+}
+
+/* Landscape orientation improvements */
+@media (orientation: landscape) and (max-height: 500px) {
+  .card {
+    width: 55px;
+    height: 82px;
+  }
+  
+  #game {
+    height: calc(100vh - 80px);
+  }
+  
+  .hand {
+    bottom: 15vh; /* Adjust for landscape */
+  }
+}

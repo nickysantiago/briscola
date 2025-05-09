@@ -1,0 +1,9 @@
+/* main.css - Imports all modular CSS files */
+
+/* Order matters - load base styles first, then components, then responsive adjustments */
+@import 'base.css';
+@import 'layout.css';
+@import 'cards.css';
+@import 'components.css';
+@import 'animations.css';
+@import 'responsive.css';

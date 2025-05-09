@@ -1,0 +1,61 @@
+/* components.css - UI components like buttons and status messages */
+
+/* Button Styles */
+.action-button {
+  padding: clamp(8px, 2vw, 12px) clamp(16px, 4vw, 24px);
+  background-color: #0277bd;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.action-button:hover {
+  background-color: #01579b;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Status message */
+.status {
+  text-align: center;
+  font-size: clamp(0.9rem, 3vw, 1.1rem);
+  font-weight: bold;
+  color: #0277bd;
+  margin: 5px 0;
+  padding: 5px 10px;
+  transition: all 0.3s ease;
+  z-index: 20;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 5px;
+}
+
+.status.highlight {
+  color: #f44336;
+  background-color: #ffebee;
+  transform: scale(1.05);
+}
+
+/* New Game button */
+#new-game {
+  padding: clamp(6px, 1.5vw, 8px) clamp(12px, 3vw, 16px);
+  background-color: #0277bd;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: clamp(0.8rem, 2.5vw, 1rem);
+  transition: all 0.3s ease;
+}
+
+#new-game:hover {
+  background-color: #01579b;
+}
+
+#new-game.pulse {
+  animation: pulse 1.5s infinite;
+  background-color: #00a5e5;
+}
