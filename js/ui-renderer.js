@@ -1,4 +1,4 @@
-// ui-renderer.js - UI rendering functions
+// ui-renderer.js - UI rendering functions with enhanced animations
 
 import { 
   playerHand, 
@@ -42,6 +42,7 @@ function renderGame() {
     console.warn("No trump card found when rendering");
   }
   
+  // Add winner pile indicators to the UI and turn indicator
   gameDiv.innerHTML = `
     <div class="game-info">
       <div class="game-info-item">
@@ -55,6 +56,10 @@ function renderGame() {
       </div>
     </div>
     
+    <div class="turn-indicator ${playerLeads ? 'player-turn' : 'gpt-turn'}">
+      ${playerLeads ? "Your Turn" : "GPT's Turn"}
+    </div>
+    
     <div class="trump-card">
       <h3>Trump:</h3>
       ${trumpHtml}
@@ -64,13 +69,28 @@ function renderGame() {
       <!-- Play field will appear here when cards are played -->
     </div>
     
+    <!-- Add winner piles for animation targets -->
+    <div class="winner-pile-player" id="player-pile"></div>
+    <div class="winner-pile-gpt" id="gpt-pile"></div>
+    
     <div class="hand">
       <h2>Your Hand (${playerHand.length}):</h2>
-      <div class="cards-container">
+      <div class="cards-container ${playerLeads && !isProcessingTrick ? 'your-turn' : ''}">
         ${playerHand.map((card, index) => renderCard(card, index)).join('')}
       </div>
     </div>
   `;
+  
+  // Apply new-card animation to the last card in player's hand if it was just added
+  if (playerHand.length > 0) {
+    setTimeout(() => {
+      const cards = document.querySelectorAll('.hand .card');
+      if (cards.length > 0) {
+        // Apply animation to the most recently added card (last card)
+        cards[cards.length - 1].classList.add('new-card');
+      }
+    }, 100);
+  }
   
   // Clear any play field from previous trick
   const oldPlayField = document.querySelector('.play-field');
@@ -202,6 +222,23 @@ function addPlayerCardToPlayField(playerCard) {
   }
 }
 
+// New function to display point value during animation
+function showPointsAnimation(points, x, y) {
+  if (points <= 0) return;
+  
+  const pointsEl = document.createElement('div');
+  pointsEl.className = 'points-popup';
+  pointsEl.textContent = `+${points}`;
+  pointsEl.style.left = `${x}px`;
+  pointsEl.style.top = `${y}px`;
+  document.body.appendChild(pointsEl);
+  
+  // Remove element after animation
+  setTimeout(() => {
+    document.body.removeChild(pointsEl);
+  }, 1500);
+}
+
 export {
   renderGame,
   renderCard,
@@ -209,5 +246,6 @@ export {
   createPlayField,
   addGptCardToPlayField,
   createGptPlayField,
-  addPlayerCardToPlayField
+  addPlayerCardToPlayField,
+  showPointsAnimation
 };

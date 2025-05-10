@@ -1,4 +1,4 @@
-// game-logic.js - Game rules and logic
+// game-logic.js - Game rules and logic with card animations
 
 import { 
   VALUE_POINTS, 
@@ -28,7 +28,8 @@ import {
 import { 
   renderGame, 
   createPlayField, 
-  addPlayerCardToPlayField
+  addPlayerCardToPlayField,
+  showPointsAnimation
 } from './ui-renderer.js';
 import { makeGptPlay } from './ai-player.js';
 
@@ -117,46 +118,144 @@ function finishTrick(playerCard, gptCard) {
     if (winner === 'player') {
       incrementPlayerPoints(trickPoints);
       console.log(`Player wins trick and gains ${trickPoints} points!`);
+      animateCardsToWinner('player', trickPoints);
     } else {
       incrementGptPoints(trickPoints);
       console.log(`GPT wins trick and gains ${trickPoints} points.`);
+      animateCardsToWinner('gpt', trickPoints);
     }
     
-    // Clear the play area after a delay
-    setTimeout(() => {
-      document.getElementById('play-area').innerHTML = '';
-      
-      // Draw new cards if any remain
-      if (deck.length >= 2) {
-        // Enough cards for both players
-        if (playerLeads) {
-          addCardToPlayerHand(drawCard());
-          addCardToGptHand(drawCard());
-        } else {
-          addCardToGptHand(drawCard());
-          addCardToPlayerHand(drawCard());
-        }
-      } else if (deck.length === 1) {
-        // Only one card left - give it to the trick winner
-        if (playerLeads) {
-          addCardToPlayerHand(drawCard());
-          addCardToGptHand(trumpCard);
-        } else {
-          addCardToGptHand(drawCard());
-          addCardToPlayerHand(trumpCard);
-        }
-      }
-     
-      // Check if game is over
-      if (playerHand.length === 0 && gptHand.length === 0) {
-        endGame();
-      } else {
-        // Reset processing flag and render game for next trick
-        setIsProcessingTrick(false);
-        renderGame();
-      }
-    }, 1500); // Show the played cards for 1.5 seconds before clearing
+    // We will NOT clear the play area immediately - it will be cleared after animations
+    // Draw new cards and continue game will now happen in the animateCardsToWinner function
   }, CARD_ANIMATION_DELAY);
+}
+
+// New function to animate cards going to the winner
+function animateCardsToWinner(winner, trickPoints) {
+  // Get the played cards
+  const playField = document.querySelector('.play-field');
+  if (!playField) {
+    console.error("Play field not found for animation");
+    continueAfterAnimation();
+    return;
+  }
+  
+  const playedCards = playField.querySelectorAll('.card');
+  if (playedCards.length === 0) {
+    console.error("No played cards found for animation");
+    continueAfterAnimation();
+    return;
+  }
+  
+  // Create status message to show who won
+  const statusMessage = document.createElement('div');
+  statusMessage.className = 'status highlight';
+  statusMessage.textContent = winner === 'player' ? 
+    `You win ${trickPoints} points!` : 
+    `GPT wins ${trickPoints} points`;
+  playField.appendChild(statusMessage);
+  
+  // Get the target pile element
+  const targetPileId = winner === 'player' ? 'player-pile' : 'gpt-pile';
+  const targetPile = document.getElementById(targetPileId);
+  let targetRect = { top: 0, left: 0 };
+  
+  if (targetPile) {
+    targetRect = targetPile.getBoundingClientRect();
+  } else {
+    // Fallback positions if piles aren't found
+    targetRect = {
+      top: winner === 'player' ? window.innerHeight - 100 : -50,
+      left: window.innerWidth - 100
+    };
+  }
+  
+  // Show points animation near the target
+  if (trickPoints > 0) {
+    showPointsAnimation(
+      trickPoints, 
+      targetRect.left - 20, 
+      winner === 'player' ? targetRect.top - 60 : targetRect.top + 60
+    );
+  }
+  
+  // Clone cards for animation
+  const animatedCards = Array.from(playedCards).map(card => {
+    const clone = card.cloneNode(true);
+    clone.classList.add('animating');
+    clone.style.position = 'fixed';
+    const rect = card.getBoundingClientRect();
+    clone.style.top = `${rect.top}px`;
+    clone.style.left = `${rect.left}px`;
+    clone.style.zIndex = '200';
+    document.body.appendChild(clone);
+    return clone;
+  });
+  
+  // Set destination based on winner
+  setTimeout(() => {
+    animatedCards.forEach((card, index) => {
+      // Add slight offset for each card so they stack
+      const offsetX = Math.random() * 30 - 15;
+      const offsetY = Math.random() * 20 - 10;
+      
+      if (winner === 'player') {
+        // Move to player pile
+        card.style.top = `${targetRect.top + offsetY}px`;
+        card.style.left = `${targetRect.left + offsetX}px`;
+        card.style.transform = 'rotate(' + (Math.random() * 40 - 20) + 'deg) scale(0.8)';
+        card.style.opacity = '0.8';
+      } else {
+        // Move to GPT pile
+        card.style.top = `${targetRect.top + offsetY}px`;
+        card.style.left = `${targetRect.left + offsetX}px`;
+        card.style.transform = 'rotate(' + (Math.random() * 40 - 20) + 'deg) scale(0.8)';
+        card.style.opacity = '0.8';
+      }
+    });
+    
+    // Continue game after animation completes
+    setTimeout(() => {
+      // Remove animated cards
+      animatedCards.forEach(card => document.body.removeChild(card));
+      continueAfterAnimation();
+    }, 800); // Match the transition time
+  }, 1000); // Short delay before animation starts
+}
+
+function continueAfterAnimation() {
+  // Clear the play area
+  document.getElementById('play-area').innerHTML = '';
+  
+  // Draw new cards if any remain
+  if (deck.length >= 2) {
+    // Enough cards for both players
+    if (playerLeads) {
+      addCardToPlayerHand(drawCard());
+      addCardToGptHand(drawCard());
+    } else {
+      addCardToGptHand(drawCard());
+      addCardToPlayerHand(drawCard());
+    }
+  } else if (deck.length === 1) {
+    // Only one card left - give it to the trick winner
+    if (playerLeads) {
+      addCardToPlayerHand(drawCard());
+      addCardToGptHand(trumpCard);
+    } else {
+      addCardToGptHand(drawCard());
+      addCardToPlayerHand(trumpCard);
+    }
+  }
+ 
+  // Check if game is over
+  if (playerHand.length === 0 && gptHand.length === 0) {
+    endGame();
+  } else {
+    // Reset processing flag and render game for next trick
+    setIsProcessingTrick(false);
+    renderGame();
+  }
 }
 
 function determineWinner(playerCard, gptCard) {
