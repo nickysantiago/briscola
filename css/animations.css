@@ -71,6 +71,9 @@
   border: 2px dashed rgba(255, 255, 255, 0.3);
   border-radius: 10px;
   background-color: rgba(0, 0, 0, 0.05);
+  overflow: visible;
+  /* Make pile a positioned container for stacked cards */
+  position: fixed;
 }
 
 .winner-pile-player {
@@ -79,13 +82,13 @@
 }
 
 .winner-pile-gpt {
-  top: 5vh;
+  top: 15vh; /* Move down from 5vh to 15vh to avoid overlap with game info */
   right: 5vw;
 }
 
 /* Add labels to the piles */
-.winner-pile-player::after,
-.winner-pile-gpt::after {
+.winner-pile-player::before,
+.winner-pile-gpt::before {
   content: attr(data-label);
   position: absolute;
   font-size: 0.8rem;
@@ -95,16 +98,29 @@
   white-space: nowrap;
 }
 
-.winner-pile-player::after {
+.winner-pile-player::before {
   content: "Your Cards";
   top: -20px;
   right: 0;
 }
 
-.winner-pile-gpt::after {
+.winner-pile-gpt::before {
   content: "GPT's Cards";
   bottom: -20px;
   right: 0;
+}
+
+/* Style for cards in the winner pile */
+.won-card {
+  transition: none; /* No transitions for won cards */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+/* Add subtle shadow to show stacking */
+.winner-pile-player .won-card,
+.winner-pile-gpt .won-card {
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* Card rotation during animation */

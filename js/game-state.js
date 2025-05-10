@@ -14,6 +14,9 @@ let playerLeads = true;
 let isProcessingTrick = false;
 let currentGptCard = null;
 let gameActive = false;
+// New variables to track the last won trick cards
+let playerWonCards = [];
+let gptWonCards = [];
 
 // Core game functions
 function shuffleDeck() {
@@ -48,6 +51,9 @@ function startGame() {
   gptPoints = 0;
   playerLeads = true;
   gameActive = true;
+  // Reset won cards
+  playerWonCards = [];
+  gptWonCards = [];
   
   // Remove title screen
   const titleScreen = document.getElementById('title-screen');
@@ -129,6 +135,8 @@ export {
   isProcessingTrick,
   currentGptCard,
   gameActive,
+  playerWonCards,
+  gptWonCards,
   shuffleDeck,
   drawCard,
   dealInitialHands,
@@ -172,4 +180,15 @@ export function removeCardFromPlayerHand(index) {
 
 export function removeCardFromGptHand(index) {
   return gptHand.splice(index, 1)[0];
+}
+
+// New functions to track won cards
+export function addCardToPlayerWonCards(playerCard, gptCard) {
+  // Keep only the last trick (2 cards)
+  playerWonCards = [playerCard, gptCard];
+}
+
+export function addCardToGptWonCards(playerCard, gptCard) {
+  // Keep only the last trick (2 cards)
+  gptWonCards = [playerCard, gptCard];
 }

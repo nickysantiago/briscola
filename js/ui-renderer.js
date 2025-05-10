@@ -11,7 +11,9 @@ import {
   isProcessingTrick,
   gameActive,
   setCurrentGptCard,
-  setIsProcessingTrick
+  setIsProcessingTrick,
+  playerWonCards,
+  gptWonCards
 } from './game-state.js';
 import { makeGptPlay } from './ai-player.js';
 
@@ -69,9 +71,13 @@ function renderGame() {
       <!-- Play field will appear here when cards are played -->
     </div>
     
-    <!-- Add winner piles for animation targets -->
-    <div class="winner-pile-player" id="player-pile"></div>
-    <div class="winner-pile-gpt" id="gpt-pile"></div>
+    <!-- Add winner piles for animation targets with last trick cards -->
+    <div class="winner-pile-player" id="player-pile">
+      ${renderWonCards(playerWonCards)}
+    </div>
+    <div class="winner-pile-gpt" id="gpt-pile">
+      ${renderWonCards(gptWonCards)}
+    </div>
     
     <div class="hand">
       <h2>Your Hand (${playerHand.length}):</h2>
@@ -239,6 +245,43 @@ function showPointsAnimation(points, x, y) {
   }, 1500);
 }
 
+// New function to render cards in the winner piles
+function renderWonCards(cards) {
+  if (!cards || cards.length === 0) {
+    return '';
+  }
+  
+  // Render each card with stacking effect
+  let html = '';
+  cards.forEach((card, index) => {
+    // Skip if card is null or undefined
+    if (!card) return;
+    
+    const isTrump = trumpCard && card.suit === trumpCard.suit;
+    const filename = `cards/${card.value}_of_${card.suit.toLowerCase()}.png`;
+    
+    // Stack cards with offset
+    const offsetTop = index * 15;
+    const offsetLeft = index * 5;
+    const zIndex = 5 + index;
+    
+    html += `
+      <div class="card won-card ${isTrump ? 'trump' : ''}" 
+           style="background-image: url('${filename}');
+                  position: absolute;
+                  top: ${offsetTop}px;
+                  left: ${offsetLeft}px;
+                  z-index: ${zIndex};
+                  transform: rotate(${(Math.random() * 10 - 5)}deg);
+                  width: 60px;
+                  height: 90px;">
+      </div>
+    `;
+  });
+  
+  return html;
+}
+
 export {
   renderGame,
   renderCard,
@@ -247,5 +290,6 @@ export {
   addGptCardToPlayField,
   createGptPlayField,
   addPlayerCardToPlayField,
-  showPointsAnimation
+  showPointsAnimation,
+  renderWonCards
 };

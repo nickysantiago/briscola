@@ -1,5 +1,6 @@
 // game-logic.js - Game rules and logic with card animations
 
+// Game state
 import { 
   VALUE_POINTS, 
   RANK_MAP, 
@@ -23,7 +24,9 @@ import {
   addCardToGptHand,
   drawCard,
   endGame,
-  removeCardFromPlayerHand
+  removeCardFromPlayerHand,
+  addCardToPlayerWonCards,
+  addCardToGptWonCards
 } from './game-state.js';
 import { 
   renderGame, 
@@ -113,6 +116,13 @@ function finishTrick(playerCard, gptCard) {
   
   // Update who leads next based on who won
   setPlayerLeads(winner === 'player');
+  
+  // Add cards to winner's pile for display
+  if (winner === 'player') {
+    addCardToPlayerWonCards(playerCard, gptCard);
+  } else {
+    addCardToGptWonCards(playerCard, gptCard);
+  }
   
   setTimeout(() => {
     if (winner === 'player') {
