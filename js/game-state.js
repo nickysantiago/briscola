@@ -17,6 +17,8 @@ let gameActive = false;
 // New variables to track the last won trick cards
 let playerWonCards = [];
 let gptWonCards = [];
+// New variable to track difficulty level
+let difficulty = 'normal'; // default to normal
 
 // Core game functions
 function shuffleDeck() {
@@ -44,7 +46,7 @@ function dealInitialHands() {
 }
 
 function startGame() {
-  console.log("Starting game...");
+  console.log(`Starting game in ${difficulty} mode...`);
   isProcessingTrick = false;
   currentGptCard = null;
   playerPoints = 0;
@@ -74,6 +76,7 @@ function startGame() {
   renderGame();
   
   console.log("Game initialized with:", {
+    difficulty: difficulty,
     deckSize: deck.length,
     playerHandSize: playerHand.length,
     gptHandSize: gptHand.length,
@@ -107,6 +110,9 @@ function endGame() {
       <p>Your Points: ${playerPoints}</p>
       <p>GPT Points: ${gptPoints}</p>
     </div>
+    <div class="difficulty-played">
+      <p>Difficulty: <span class="difficulty-indicator ${difficulty}">${getDifficultyName()}</span></p>
+    </div>
     <p style="margin-top: 15px;">Click "New Game" to play again</p>
   `;
   playArea.appendChild(gameOverDisplay);
@@ -116,6 +122,32 @@ function endGame() {
   if (newGameButton) {
     newGameButton.classList.add('pulse');
   }
+}
+
+// New function to get the difficulty name
+function getDifficultyName() {
+  switch(difficulty) {
+    case 'easy': return 'Easy';
+    case 'normal': return 'Normal';
+    case 'hard': return 'Hard';
+    default: return 'Normal';
+  }
+}
+
+// Set difficulty level
+function setDifficulty(level) {
+  if (['easy', 'normal', 'hard'].includes(level)) {
+    difficulty = level;
+    console.log(`Difficulty set to ${level}`);
+  } else {
+    console.error(`Invalid difficulty level: ${level}`);
+    difficulty = 'normal';
+  }
+}
+
+// Get current difficulty
+function getDifficulty() {
+  return difficulty;
 }
 
 // Helper function for card string representation
@@ -137,12 +169,16 @@ export {
   gameActive,
   playerWonCards,
   gptWonCards,
+  difficulty,
   shuffleDeck,
   drawCard,
   dealInitialHands,
   startGame,
   endGame,
-  cardStr
+  cardStr,
+  setDifficulty,
+  getDifficulty,
+  getDifficultyName
 };
 
 // Export setters and getters for state modification

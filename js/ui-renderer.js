@@ -13,7 +13,9 @@ import {
   setCurrentGptCard,
   setIsProcessingTrick,
   playerWonCards,
-  gptWonCards
+  gptWonCards,
+  difficulty,
+  getDifficultyName
 } from './game-state.js';
 import { makeGptPlay } from './ai-player.js';
 
@@ -55,6 +57,9 @@ function renderGame() {
       </div>
       <div class="game-info-item">
         <strong>Deck:</strong> ${deck.length} | <strong>GPT Hand:</strong> ${gptHand.length}
+      </div>
+      <div class="game-info-item">
+        <strong>Mode:</strong> <span class="difficulty-indicator ${difficulty}">${getDifficultyName()}</span>
       </div>
     </div>
     

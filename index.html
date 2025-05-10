@@ -18,6 +18,22 @@
         <h2>Welcome to Brisca</h2>
         <p>A traditional Spanish card game</p>
         <button id="start-game" class="action-button">Start Game</button>
+        
+        <!-- Difficulty selection - initially hidden -->
+        <div id="difficulty-selection" style="display: none; margin-top: 30px;">
+          <h3>Select Difficulty</h3>
+          <div class="difficulty-buttons">
+            <button id="easy-mode" class="difficulty-button easy">
+              <span>Easy</span>
+            </button>
+            <button id="normal-mode" class="difficulty-button normal">
+              <span>Normal</span>
+            </button>
+            <button id="hard-mode" class="difficulty-button hard">
+              <span>Hard</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -28,7 +44,7 @@
 
   <!-- Scripts -->
   <script type="module">
-    import { startGame } from './js/game-state.js';
+    import { startGame, setDifficulty } from './js/game-state.js';
     import { playCard } from './js/game-logic.js';
 
     // Make playCard available globally
@@ -37,7 +53,8 @@
     // Add event listener for new game button
     document.getElementById('new-game').addEventListener('click', () => {
       console.log("New game button clicked");
-      startGame();
+      // Show difficulty selection again
+      showDifficultySelection();
       
       // Remove pulsing animation when starting a new game
       document.getElementById('new-game').classList.remove('pulse');
@@ -46,9 +63,124 @@
     // Add event listener for start game button
     document.getElementById('start-game').addEventListener('click', () => {
       console.log("Start game button clicked");
-      document.getElementById('game-footer').classList.remove('hidden');
-      startGame();
+      // Hide start game button and show difficulty selection
+      document.getElementById('start-game').style.display = 'none';
+      document.getElementById('difficulty-selection').style.display = 'block';
     });
+    
+    // Add event listeners for difficulty buttons
+    document.getElementById('easy-mode').addEventListener('click', () => {
+      console.log("Easy mode selected");
+      setDifficulty('easy');
+      startGame();
+      hideDifficultySelection();
+    });
+    
+    document.getElementById('normal-mode').addEventListener('click', () => {
+      console.log("Normal mode selected");
+      setDifficulty('normal');
+      startGame();
+      hideDifficultySelection();
+    });
+    
+    document.getElementById('hard-mode').addEventListener('click', () => {
+      console.log("Hard mode (Good Luck) selected");
+      setDifficulty('hard');
+      startGame();
+      hideDifficultySelection();
+    });
+    
+    // Function to hide difficulty selection and show game
+    function hideDifficultySelection() {
+      const difficultySelection = document.getElementById('difficulty-selection');
+      if (difficultySelection) {
+        difficultySelection.style.display = 'none';
+      }
+      
+      const gameFooter = document.getElementById('game-footer');
+      if (gameFooter) {
+        gameFooter.classList.remove('hidden');
+      }
+    }
+    
+    // Function to show difficulty selection for new games
+    function showDifficultySelection() {
+      // We need to recreate the title screen if it doesn't exist
+      let titleScreen = document.getElementById('title-screen');
+      if (!titleScreen) {
+        console.log("Title screen not found, recreating it");
+        const gameDiv = document.getElementById('game');
+        if (gameDiv) {
+          // Clear the game div
+          gameDiv.innerHTML = '';
+          
+          // Recreate the title screen with difficulty selection
+          titleScreen = document.createElement('div');
+          titleScreen.id = 'title-screen';
+          titleScreen.innerHTML = `
+            <h2>Welcome to Brisca</h2>
+            <p>A traditional Spanish card game</p>
+            <div id="difficulty-selection" style="margin-top: 30px;">
+              <h3>Select Difficulty</h3>
+              <div class="difficulty-buttons">
+                <button id="easy-mode" class="difficulty-button easy">
+                  <span>Easy</span>
+                  <small>Random plays</small>
+                </button>
+                <button id="normal-mode" class="difficulty-button normal">
+                  <span>Normal</span>
+                  <small>Strategic plays</small>
+                </button>
+                <button id="hard-mode" class="difficulty-button hard">
+                  <span>Good Luck</span>
+                  <small>Expert strategy</small>
+                </button>
+              </div>
+            </div>
+          `;
+          gameDiv.appendChild(titleScreen);
+          
+          // Re-add event listeners for difficulty buttons
+          document.getElementById('easy-mode').addEventListener('click', () => {
+            console.log("Easy mode selected");
+            setDifficulty('easy');
+            startGame();
+            hideDifficultySelection();
+          });
+          
+          document.getElementById('normal-mode').addEventListener('click', () => {
+            console.log("Normal mode selected");
+            setDifficulty('normal');
+            startGame();
+            hideDifficultySelection();
+          });
+          
+          document.getElementById('hard-mode').addEventListener('click', () => {
+            console.log("Hard mode (Good Luck) selected");
+            setDifficulty('hard');
+            startGame();
+            hideDifficultySelection();
+          });
+        } else {
+          console.error("Game div not found! Cannot recreate title screen.");
+          return;
+        }
+      } else {
+        // Title screen exists, just show it
+        titleScreen.style.display = 'flex';
+        
+        // Hide start button if it exists, show difficulty
+        const startButton = document.getElementById('start-game');
+        if (startButton) {
+          startButton.style.display = 'none';
+        }
+        
+        const difficultySelection = document.getElementById('difficulty-selection');
+        if (difficultySelection) {
+          difficultySelection.style.display = 'block';
+        }
+      }
+    }
   </script>
 </body>
 </html>

@@ -1,0 +1,130 @@
+/* difficulty.css - Styles for difficulty selection */
+
+/* Difficulty Selection Styling */
+#difficulty-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+  padding: 15px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+#difficulty-selection h3 {
+  margin-bottom: 15px;
+  color: #0277bd;
+  font-size: clamp(1.1rem, 3.5vw, 1.8rem);
+}
+
+.difficulty-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.difficulty-button {
+  flex: 1;
+  min-width: 100px;
+  padding: 15px 10px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font-size: clamp(0.9rem, 3vw, 1.2rem);
+  font-weight: bold;
+  text-align: center;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.difficulty-button:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 7px 10px rgba(0, 0, 0, 0.25);
+}
+
+.difficulty-button small {
+  display: block;
+  font-size: clamp(0.7rem, 2vw, 0.9rem);
+  opacity: 0.8;
+  margin-top: 5px;
+  font-weight: normal;
+}
+
+/* Color schemes for different difficulty levels */
+.difficulty-button.easy {
+  background-color: #4caf50; /* Green */
+  background-image: linear-gradient(to bottom right, #4caf50, #8bc34a);
+}
+
+.difficulty-button.normal {
+  background-color: #2196f3; /* Blue */
+  background-image: linear-gradient(to bottom right, #2196f3, #03a9f4);
+}
+
+.difficulty-button.hard {
+  background-color: #f44336; /* Red */
+  background-image: linear-gradient(to bottom right, #f44336, #ff9800);
+}
+
+.difficulty-button.easy:hover {
+  background-image: linear-gradient(to bottom right, #5cbb60, #9bd359);
+}
+
+.difficulty-button.normal:hover {
+  background-image: linear-gradient(to bottom right, #30a5fe, #14b4ff);
+}
+
+.difficulty-button.hard:hover {
+  background-image: linear-gradient(to bottom right, #ff5445, #ffaa30);
+}
+
+/* Current difficulty display in game info */
+.difficulty-indicator {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: white;
+  margin-left: 5px;
+}
+
+.difficulty-indicator.easy {
+  background-color: #4caf50;
+}
+
+.difficulty-indicator.normal {
+  background-color: #2196f3;
+}
+
+.difficulty-indicator.hard {
+  background-color: #f44336;
+}
+
+/* Difficulty played indicator in game over display */
+.difficulty-played {
+  margin: 10px 0;
+  padding: 5px 10px;
+  border-radius: 5px;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Responsive styles for mobile */
+@media (max-width: 480px) {
+  .difficulty-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .difficulty-button {
+    width: 100%;
+  }
+}
