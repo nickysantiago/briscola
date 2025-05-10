@@ -1,5 +1,4 @@
 // ui-renderer.js - UI rendering functions
-// mobile-friendly improvements - 04/08/2025
 
 import { 
   playerHand, 
@@ -12,8 +11,7 @@ import {
   isProcessingTrick,
   gameActive,
   setCurrentGptCard,
-  setIsProcessingTrick,
-  getStatusMessage
+  setIsProcessingTrick
 } from './game-state.js';
 import { makeGptPlay } from './ai-player.js';
 
@@ -60,10 +58,6 @@ function renderGame() {
     <div class="trump-card">
       <h3>Trump:</h3>
       ${trumpHtml}
-    </div>
-    
-    <div class="status">
-      ${getStatusMessage()}
     </div>
     
     <div class="play-area" id="play-area">
@@ -208,18 +202,6 @@ function addPlayerCardToPlayField(playerCard) {
   }
 }
 
-// New function to update status display with highlight effect
-function updateStatusDisplay(highlight) {
-  const statusElement = document.querySelector('.status');
-  if (statusElement) {
-    if (highlight) {
-      statusElement.classList.add('highlight');
-    } else {
-      statusElement.classList.remove('highlight');
-    }
-  }
-}
-
 export {
   renderGame,
   renderCard,
@@ -227,6 +209,5 @@ export {
   createPlayField,
   addGptCardToPlayField,
   createGptPlayField,
-  addPlayerCardToPlayField,
-  updateStatusDisplay
+  addPlayerCardToPlayField
 };

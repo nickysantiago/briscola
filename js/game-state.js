@@ -1,7 +1,7 @@
 // game-state.js - Game state management and core functions
 
 import { SUITS, VALUES, INITIAL_HAND_SIZE } from './constants.js';
-import { renderGame, updateStatusDisplay } from './ui-renderer.js';
+import { renderGame } from './ui-renderer.js';
 
 // Game state
 let deck = [];
@@ -13,7 +13,6 @@ let trumpCard = null;
 let playerLeads = true;
 let isProcessingTrick = false;
 let currentGptCard = null;
-let statusMessage = "Game starting...";
 let gameActive = false;
 
 // Core game functions
@@ -66,8 +65,6 @@ function startGame() {
   dealInitialHands();
   trumpCard = drawCard();
   
-  statusMessage = "You lead the first trick";
-  
   renderGame();
   
   console.log("Game initialized with:", {
@@ -81,14 +78,6 @@ function startGame() {
 function endGame() {
   gameActive = false;
   
-  let result = playerPoints > gptPoints ? '🎉 You win!' : 
-               playerPoints < gptPoints ? 'GPT wins 😢' : 
-               'It\'s a tie!';
-               
-  // Use on-screen message instead of alert
-  setStatusMessage(`Game Over! Final score: You: ${playerPoints} | GPT: ${gptPoints} | ${result}`);
-  updateStatusDisplay(true);
-  
   // Remove any remaining play field
   const playArea = document.getElementById('play-area');
   if (playArea) {
@@ -101,6 +90,11 @@ function endGame() {
   gameOverDisplay.style.backgroundColor = playerPoints > gptPoints ? '#e8f5e9' : 
                                            playerPoints < gptPoints ? '#ffebee' : 
                                            '#e3f2fd';
+  
+  let result = playerPoints > gptPoints ? '🎉 You win!' : 
+               playerPoints < gptPoints ? 'GPT wins 😢' : 
+               'It\'s a tie!';
+                              
   gameOverDisplay.innerHTML = `
     <h2>${result}</h2>
     <div style="margin: 10px 0; font-size: 1.2em;">
@@ -116,8 +110,6 @@ function endGame() {
   if (newGameButton) {
     newGameButton.classList.add('pulse');
   }
-  
-  // We do NOT auto-start a new game anymore
 }
 
 // Helper function for card string representation
@@ -180,13 +172,4 @@ export function removeCardFromPlayerHand(index) {
 
 export function removeCardFromGptHand(index) {
   return gptHand.splice(index, 1)[0];
-}
-
-// Status message handling
-export function setStatusMessage(message) {
-  statusMessage = message;
-}
-
-export function getStatusMessage() {
-  return statusMessage;
 }

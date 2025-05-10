@@ -23,14 +23,12 @@ import {
   addCardToGptHand,
   drawCard,
   endGame,
-  removeCardFromPlayerHand,
-  setStatusMessage
+  removeCardFromPlayerHand
 } from './game-state.js';
 import { 
   renderGame, 
   createPlayField, 
-  addPlayerCardToPlayField,
-  updateStatusDisplay 
+  addPlayerCardToPlayField
 } from './ui-renderer.js';
 import { makeGptPlay } from './ai-player.js';
 
@@ -115,18 +113,13 @@ function finishTrick(playerCard, gptCard) {
   // Update who leads next based on who won
   setPlayerLeads(winner === 'player');
   
-  // Update the status message IMMEDIATELY about who leads next
-  // This fixes the delay in banner updates
-  setStatusMessage(winner === 'player' 
-    ? `You win the trick and gain ${trickPoints} points!` 
-    : `GPT wins the trick and gains ${trickPoints} points.`);
-  updateStatusDisplay(true);
-  
   setTimeout(() => {
     if (winner === 'player') {
       incrementPlayerPoints(trickPoints);
+      console.log(`Player wins trick and gains ${trickPoints} points!`);
     } else {
       incrementGptPoints(trickPoints);
+      console.log(`GPT wins trick and gains ${trickPoints} points.`);
     }
     
     // Clear the play area after a delay
@@ -158,15 +151,9 @@ function finishTrick(playerCard, gptCard) {
       if (playerHand.length === 0 && gptHand.length === 0) {
         endGame();
       } else {
-        // Update the status message for the next leader BEFORE rendering game
-        // This fixes the timing issue with the status message
-        setStatusMessage(playerLeads ? "You lead the next trick" : "GPT leads the next trick");
-        updateStatusDisplay(false);
-        setIsProcessingTrick(false); // Reset processing flag
-        
-        // Now render game with the correct message already set
+        // Reset processing flag and render game for next trick
+        setIsProcessingTrick(false);
         renderGame();
-        
       }
     }, 1500); // Show the played cards for 1.5 seconds before clearing
   }, CARD_ANIMATION_DELAY);

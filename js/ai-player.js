@@ -8,7 +8,6 @@ import {
   trumpCard, 
   gptHand,
   removeCardFromGptHand,
-  setStatusMessage
 } from './game-state.js';
 import { 
   getCardRank 
@@ -16,7 +15,6 @@ import {
 import { 
   createGptPlayField,
   addGptCardToPlayField,
-  updateStatusDisplay
 } from './ui-renderer.js';
 
 function makeGptPlay(playerCard = null) {
@@ -32,9 +30,6 @@ function makeGptPlay(playerCard = null) {
     // GPT leads - plays a random card
     gptCardIndex = Math.floor(Math.random() * gptHand.length);
     
-    // Update the status message as soon as GPT leads
-    setStatusMessage("GPT leads the trick");
-    updateStatusDisplay(false);
   } else {
     // GPT responds to player's lead
     // Try to win with lowest winning card, or play lowest card if can't win
