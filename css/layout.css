@@ -56,10 +56,11 @@
 .trump-card {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: left;
   gap: 10px;
   margin-bottom: 5px;
   flex-wrap: wrap;
+  margin-left: 25px;
 }
 
 .trump-card h3 {
@@ -67,10 +68,10 @@
   font-size: clamp(0.8rem, 2.5vw, 1.1rem);
 }
 
-/* Player's hand - positioned 25% from bottom */
+/* Player's hand - positioned 10% from bottom */
 .hand {
   position: fixed;
-  bottom: 25vh; /* 25% from bottom of viewport */
+  bottom: 10vh; /* 10% from bottom of viewport */
   left: 0;
   right: 0;
   display: flex;
