@@ -16,7 +16,9 @@ import {
   playerWonCards,
   gptWonCards,
   playerPoints,
-  gptPoints
+  gptPoints,
+  allPlayedCards,
+  playerVoidSuits
 } from './game-state.js';
 import { 
   getCardRank 
@@ -127,12 +129,10 @@ function makeGptPlay(playerCard = null) {
 
 // Easy Mode - Simply play random cards regardless of strategy
 function playEasyMode(playerCard = null) {
-  // We've already checked if gptHand is empty in the makeGptPlay function
-  // Always play a random card
   return Math.floor(Math.random() * gptHand.length);
 }
 
-// Normal Mode - Current AI implementation (strategic but not optimal)
+// Normal Mode - Strategic but not optimal
 function playNormalMode(playerCard = null) {
   let gptCardIndex;
   
@@ -197,456 +197,347 @@ function playNormalMode(playerCard = null) {
   return gptCardIndex;
 }
 
-// Hard Mode - Advanced AI with card counting and optimal strategy
-function playHardMode(playerCard = null) {
-  // Track all cards played so far (including current hands)
-  const playedCards = [...playerWonCards, ...gptWonCards].filter(card => card !== null && card !== undefined);
-  
-  // Create a complete deck to track which cards have been played
-  const fullDeck = [];
+// ============================================================
+// HARD MODE - Expert AI with card counting, void tracking,
+// and perfect-information endgame solver.
+// ============================================================
+
+function cardEq(a, b) {
+  return !!a && !!b && a.suit === b.suit && a.value === b.value;
+}
+
+// Build the set of cards GPT has not seen (not in its hand, not played).
+// These are the cards in the player's hand + remaining deck + trump card
+// (until trump card is picked up as the final draw).
+function computeUnseen() {
+  const full = [];
   for (const suit of SUITS) {
     for (const value of [1, 2, 3, 4, 5, 6, 7, 10, 11, 12]) {
-      fullDeck.push({ suit, value });
+      full.push({ suit, value });
     }
   }
-  
-  // Track which cards are still in play (not in our hand and not played yet)
-  const cardsInPlay = fullDeck.filter(card => {
-    // Check if this card is in GPT's hand
-    const inGptHand = gptHand.some(c => c.suit === card.suit && c.value === card.value);
-    
-    // Check if this card has been played already
-    const hasBeenPlayed = playedCards.some(c => c && c.suit === card.suit && c.value === card.value);
-    
-    // Card is in play if it's not in our hand and hasn't been played yet
-    return !inGptHand && !hasBeenPlayed;
-  });
-  
-  // These cards are most likely in player's hand or still in the deck
-  const possiblePlayerCards = cardsInPlay.filter(card => card.suit !== trumpCard.suit);
-  const possiblePlayerTrumps = cardsInPlay.filter(card => card.suit === trumpCard.suit);
-  
-  // Count cards by suit and value
-  const cardCounts = {
-    Oros: { played: 0, total: 10, remaining: 10 },
-    Copas: { played: 0, total: 10, remaining: 10 },
-    Espadas: { played: 0, total: 10, remaining: 10 },
-    Bastos: { played: 0, total: 10, remaining: 10 }
-  };
-  
-  // Count played cards by suit
-  playedCards.forEach(card => {
-    if (card && card.suit) {
-      cardCounts[card.suit].played++;
-      cardCounts[card.suit].remaining--;
-    }
-  });
-  
-  // Subtract our hand from remaining counts
-  gptHand.forEach(card => {
-    cardCounts[card.suit].remaining--;
-  });
-  
-  // Calculate game phase based on deck size
+  return full.filter(c =>
+    !gptHand.some(h => cardEq(h, c)) &&
+    !allPlayedCards.some(p => cardEq(p, c))
+  );
+}
+
+function playHardMode(playerCard = null) {
+  const unseen = computeUnseen();
+  const trumpsInHand = gptHand.filter(c => c.suit === trumpCard.suit);
   const gamePhase = deck.length > 15 ? 'early' : deck.length > 6 ? 'mid' : 'late';
-  
-  // Calculate score situation
-  const scoreDifference = gptPoints - playerPoints;
-  const scoreSituation = scoreDifference > 15 ? 'winning_big' : 
-                          scoreDifference > 5 ? 'winning' :
-                          scoreDifference < -15 ? 'losing_big' :
-                          scoreDifference < -5 ? 'losing' : 'close';
-  
-  // If GPT leads
-  if (!playerLeads) {
-    // LEADING STRATEGIES
-    
-    // Calculate the total value of high cards in each suit in our hand
-    const suitValueMap = {};
-    SUITS.forEach(suit => {
-      const cardsInSuit = gptHand.filter(c => c.suit === suit);
-      const valueOfSuit = cardsInSuit.reduce((total, card) => {
-        return total + (VALUE_POINTS[card.value] || 0);
-      }, 0);
-      suitValueMap[suit] = {
-        count: cardsInSuit.length,
-        value: valueOfSuit
-      };
-    });
-    
-    // SPECIAL CASES BASED ON GAME PHASE
-    
-    // EARLY GAME: Prioritize leading with low cards that can't be trumped
-    if (gamePhase === 'early') {
-      // If we have a non-trump suit where all remaining cards are in our hand
-      for (const suit in cardCounts) {
-        if (suit !== trumpCard.suit && 
-            cardCounts[suit].remaining === suitValueMap[suit].count &&
-            suitValueMap[suit].count > 0) {
-          // We have all remaining cards of this suit - safe to play high value cards
-          const highValueCard = gptHand
-            .filter(c => c.suit === suit && VALUE_POINTS[c.value] > 0)
-            .sort((a, b) => (VALUE_POINTS[b.value] || 0) - (VALUE_POINTS[a.value] || 0))[0];
-          
-          if (highValueCard) {
-            return gptHand.indexOf(highValueCard);
-          }
-        }
-      }
-      
-      // Strategy: Lead with a low card from a suit where player is likely out of cards
-      const suitPlayerLikelyOut = Object.keys(cardCounts).find(suit => 
-        suit !== trumpCard.suit && 
-        cardCounts[suit].played > 7 && 
-        suitValueMap[suit].count > 0);
-      
-      if (suitPlayerLikelyOut) {
-        // Find our lowest value card in this suit
-        const lowestCard = gptHand
-          .filter(c => c.suit === suitPlayerLikelyOut)
-          .sort((a, b) => (VALUE_POINTS[a.value] || 0) - (VALUE_POINTS[b.value] || 0))[0];
-        
-        return gptHand.indexOf(lowestCard);
-      }
+  const scoreDiff = gptPoints - playerPoints;
+
+  // ------------------------------------------------------------
+  // PERFECT ENDGAME: deck empty + <=3 cards each.
+  // Unseen cards == player's hand exactly. Brute-force minimax.
+  // ------------------------------------------------------------
+  if (deck.length === 0) {
+    // Player's hand is exactly the unseen set (trump already drawn).
+    const playerKnownHand = unseen.slice();
+    if (playerKnownHand.length <= 3 && playerKnownHand.length === playerHand.length) {
+      return solveEndgame(playerCard, playerKnownHand);
     }
-    
-    // MID GAME: Strategic lead based on trump count and player tendencies
-    if (gamePhase === 'mid') {
-      // If we have high value cards and player is low on trumps, play them
-      const playerTrumpsLeft = possiblePlayerTrumps.length;
-      const highValueCards = gptHand.filter(c => (VALUE_POINTS[c.value] || 0) >= 10);
-      
-      if (playerTrumpsLeft === 0 && highValueCards.length > 0) {
-        // Safe to play high value cards - player has no trumps
-        return gptHand.indexOf(highValueCards[0]);
-      }
-      
-      // If we're behind, try to win points by leading with medium value cards
-      if (scoreSituation === 'losing' || scoreSituation === 'losing_big') {
-        const mediumCards = gptHand.filter(c => (VALUE_POINTS[c.value] || 0) >= 3 && (VALUE_POINTS[c.value] || 0) < 10);
-        if (mediumCards.length > 0) {
-          return gptHand.indexOf(mediumCards[0]);
-        }
-      }
-    }
-    
-    // LATE GAME: Aggressive high value play
-    if (gamePhase === 'late') {
-      // In late game, play high value cards if we have trump superiority
-      const ourTrumps = gptHand.filter(c => c.suit === trumpCard.suit);
-      const playerPossibleTrumps = possiblePlayerTrumps.length;
-      
-      if (ourTrumps.length > playerPossibleTrumps) {
-        // We have trump advantage - play high value cards
-        const highCards = gptHand
-          .filter(c => c.suit !== trumpCard.suit && (VALUE_POINTS[c.value] || 0) > 0)
-          .sort((a, b) => (VALUE_POINTS[b.value] || 0) - (VALUE_POINTS[a.value] || 0));
-        
-        if (highCards.length > 0) {
-          return gptHand.indexOf(highCards[0]);
-        }
-      }
-      
-      // If we're way behind, take risks with high cards
-      if (scoreSituation === 'losing_big' && deck.length <= 2) {
-        const highestCard = gptHand
-          .sort((a, b) => (VALUE_POINTS[b.value] || 0) - (VALUE_POINTS[a.value] || 0))[0];
-        
-        if (highestCard && (VALUE_POINTS[highestCard.value] || 0) > 0) {
-          return gptHand.indexOf(highestCard);
-        }
-      }
-    }
-    
-    // If no special case matched, use these general strategies
-    
-    // 1. If we have aces or threes of non-trump suits with few cards left in that suit, lead with them
-    const highValueNonTrumps = gptHand.filter(c => 
-      c.suit !== trumpCard.suit && 
-      (c.value === 1 || c.value === 3) && 
-      cardCounts[c.suit].remaining <= 2
-    );
-    
-    if (highValueNonTrumps.length > 0) {
-      return gptHand.indexOf(highValueNonTrumps[0]);
-    }
-    
-    // 2. Lead with a card from a suit we have multiple cards in (card dominance strategy)
-    let bestSuitToPlay = null;
-    let bestSuitScore = -1;
-    
-    for (const suit in suitValueMap) {
-      if (suitValueMap[suit].count < 2) continue;
-      
-      // Calculate a score based on how many cards we have and their value
-      const dominanceScore = suitValueMap[suit].count * 10 - suitValueMap[suit].value;
-      
-      // Prefer suits where we have more cards but lower value (we want to keep high value cards)
-      if (dominanceScore > bestSuitScore) {
-        bestSuitScore = dominanceScore;
-        bestSuitToPlay = suit;
-      }
-    }
-    
-    if (bestSuitToPlay) {
-      // Play lowest card from our most dominant suit
-      const cardsInSuit = gptHand.filter(c => c.suit === bestSuitToPlay);
-      const lowestCard = cardsInSuit.reduce((lowest, current) => {
-        const lowestPoints = VALUE_POINTS[lowest.value] || 0;
-        const currentPoints = VALUE_POINTS[current.value] || 0;
-        return currentPoints < lowestPoints ? current : lowest;
-      }, cardsInSuit[0]);
-      
-      return gptHand.indexOf(lowestCard);
-    }
-    
-    // 3. Last resort: Lead with our lowest value card
-    const lowestValueCard = gptHand.reduce((lowest, current) => {
-      const lowestPoints = VALUE_POINTS[lowest.value] || 0;
-      const currentPoints = VALUE_POINTS[current.value] || 0;
-      return currentPoints < lowestPoints ? current : lowest;
-    }, gptHand[0]);
-    
-    return gptHand.indexOf(lowestValueCard);
   }
-  // If player leads and GPT responds
-  else {
-    // FOLLOWING STRATEGIES
-    
-    const trumpsInHand = gptHand.filter(c => c.suit === trumpCard.suit);
-    const sameSuitCards = gptHand.filter(c => c.suit === playerCard.suit);
-    const playerCardPoints = VALUE_POINTS[playerCard.value] || 0;
-    
-    // Track the highest rank of each suit still in play
-    const highestRankBySuit = {};
-    SUITS.forEach(suit => {
-      const highestCard = cardsInPlay
-        .filter(c => c.suit === suit)
-        .sort((a, b) => getCardRank(b) - getCardRank(a))[0];
-      
-      highestRankBySuit[suit] = highestCard ? getCardRank(highestCard) : -1;
+
+  // ------------------------------------------------------------
+  // HEURISTIC PLAY (deck non-empty or hand too large for search)
+  // ------------------------------------------------------------
+
+  // ================== LEADING ==================
+  if (!playerLeads) {
+    // 1. Cash a guaranteed winner: highest remaining card of a non-trump suit,
+    //    in a suit where the player is NOT known void. Only worth it if the
+    //    card itself carries points (otherwise it's a wasted lead).
+    for (const c of gptHand) {
+      if (c.suit === trumpCard.suit) continue;
+      if (playerVoidSuits.has(c.suit)) continue; // they'll trump or dump
+      const higherUnseen = unseen.some(u =>
+        u.suit === c.suit && getCardRank(u) > getCardRank(c)
+      );
+      if (!higherUnseen && (VALUE_POINTS[c.value] || 0) >= 3) {
+        return gptHand.indexOf(c);
+      }
+    }
+
+    // 2. If player is out of trumps entirely, cash our highest point non-trump.
+    const playerTrumpsRemaining = unseen.filter(u => u.suit === trumpCard.suit).length;
+    if (playerTrumpsRemaining === 0) {
+      const best = gptHand
+        .filter(c => c.suit !== trumpCard.suit)
+        .sort((a, b) => (VALUE_POINTS[b.value] || 0) - (VALUE_POINTS[a.value] || 0))[0];
+      if (best && (VALUE_POINTS[best.value] || 0) > 0) return gptHand.indexOf(best);
+    }
+
+    // 3. If we have trump Ace or 3 and there are still point-bearing non-trumps
+    //    out there, consider leading a medium-value non-trump to bait the player
+    //    into committing trumps. Skip if we're already winning big.
+    if (gamePhase === 'mid' && scoreDiff < 15 && trumpsInHand.some(t => t.value === 1 || t.value === 3)) {
+      const bait = gptHand
+        .filter(c => c.suit !== trumpCard.suit && !playerVoidSuits.has(c.suit))
+        .filter(c => {
+          const pts = VALUE_POINTS[c.value] || 0;
+          return pts >= 2 && pts <= 4; // Jacks/Kings
+        })
+        .sort((a, b) => (VALUE_POINTS[a.value] || 0) - (VALUE_POINTS[b.value] || 0))[0];
+      if (bait) return gptHand.indexOf(bait);
+    }
+
+    // 4. Lead a low zero-point card. Prefer suits the player is void in
+    //    (they must discard or trump — either costs them).
+    const zeroPointLeads = gptHand
+      .filter(c => c.suit !== trumpCard.suit && (VALUE_POINTS[c.value] || 0) === 0)
+      .sort((a, b) => {
+        const aVoid = playerVoidSuits.has(a.suit) ? 1 : 0;
+        const bVoid = playerVoidSuits.has(b.suit) ? 1 : 0;
+        if (aVoid !== bVoid) return bVoid - aVoid;
+        return getCardRank(a) - getCardRank(b);
+      });
+    if (zeroPointLeads.length > 0) return gptHand.indexOf(zeroPointLeads[0]);
+
+    // 5. Fallback: lowest-value, lowest-rank card we own (avoid leading trump
+    //    unless forced).
+    const nonTrump = gptHand.filter(c => c.suit !== trumpCard.suit);
+    const pool = nonTrump.length > 0 ? nonTrump : gptHand;
+    const fallback = [...pool].sort((a, b) => {
+      const d = (VALUE_POINTS[a.value] || 0) - (VALUE_POINTS[b.value] || 0);
+      return d !== 0 ? d : getCardRank(a) - getCardRank(b);
+    })[0];
+    return gptHand.indexOf(fallback);
+  }
+
+  // ================== FOLLOWING ==================
+  const sameSuit = gptHand.filter(c => c.suit === playerCard.suit);
+  const playerPts = VALUE_POINTS[playerCard.value] || 0;
+
+  // Helper: lowest card that beats `beat` from a set, or null.
+  const lowestWinner = (cards, beat) => {
+    const winners = cards.filter(c => getCardRank(c) > getCardRank(beat));
+    if (!winners.length) return null;
+    return winners.reduce((lo, c) => getCardRank(c) < getCardRank(lo) ? c : lo);
+  };
+
+  // Case A: Player led trump. Only same-suit (trump) can beat it.
+  if (playerCard.suit === trumpCard.suit) {
+    const w = lowestWinner(sameSuit, playerCard);
+    // Overtake only if it's worth it: player's card has points, OR
+    // our winning trump is cheap (rank <= 3, i.e. 4/5/6/7), OR we're losing.
+    if (w) {
+      const wRank = getCardRank(w);
+      if (playerPts > 0 || wRank <= 3 || scoreDiff < -5) {
+        return gptHand.indexOf(w);
+      }
+    }
+    // Otherwise dump cheapest non-trump (save trumps for offense).
+    return indexOfCheapestDiscard();
+  }
+
+  // Case B: Player led a non-trump suit.
+  // B1: Follow suit and beat if trick carries points OR our winner is very cheap.
+  {
+    const w = lowestWinner(sameSuit, playerCard);
+    if (w) {
+      const wRank = getCardRank(w);
+      if (playerPts > 0 || wRank <= 2 || scoreDiff < -5) {
+        return gptHand.indexOf(w);
+      }
+    }
+  }
+
+  // B2: Can't/shouldn't win with same suit. Consider trumping.
+  if (trumpsInHand.length > 0) {
+    // Policy for spending a trump on a non-trump lead:
+    //  - Always trump 10+ point cards (Ace 11, Three 10).
+    //  - Trump 2–4 point cards in mid/late game, or anytime we're losing.
+    //  - Trump 0-point cards only in late game with trump surplus AND
+    //    a cheap trump (4/5/6/7).
+    const lowestTrump = trumpsInHand.reduce(
+      (lo, c) => getCardRank(c) < getCardRank(lo) ? c : lo
+    );
+    const lowTrumpRank = getCardRank(lowestTrump);
+
+    const shouldTrump =
+      playerPts >= 10 ||
+      (playerPts >= 2 && (gamePhase !== 'early' || scoreDiff < -5)) ||
+      (playerPts === 0 && gamePhase === 'late' && trumpsInHand.length >= 2 && lowTrumpRank <= 3);
+
+    if (shouldTrump) {
+      return gptHand.indexOf(lowestTrump);
+    }
+  }
+
+  // B3: Not winning. If we have same-suit cards, we must play one — dump
+  // cheapest in that suit. Otherwise dump cheapest non-trump overall.
+  if (sameSuit.length > 0) {
+    const cheapest = sameSuit.reduce((lo, c) => {
+      const lp = VALUE_POINTS[lo.value] || 0;
+      const cp = VALUE_POINTS[c.value] || 0;
+      if (cp !== lp) return cp < lp ? c : lo;
+      return getCardRank(c) < getCardRank(lo) ? c : lo;
     });
-    
-    // ADVANCED DECISION: Calculate the "worth" of winning this trick
-    // Consider: card points, game phase, score difference, and trump scarcity
-    
-    // Base worth on the points in the trick
-    let trickWorth = playerCardPoints;
-    
-    // Adjust based on game phase (more valuable in late game)
-    if (gamePhase === 'late') trickWorth *= 1.5;
-    
-    // Adjust based on score situation
-    if (scoreSituation === 'losing' || scoreSituation === 'losing_big') {
-      trickWorth *= 1.3; // More valuable if we're behind
+    return gptHand.indexOf(cheapest);
+  }
+
+  return indexOfCheapestDiscard();
+}
+
+// Dump cheapest card, preferring suits the player is void in (those cards
+// will never win anyway) and avoiding trump Ace/Three unless that's all we have.
+function indexOfCheapestDiscard() {
+  const candidates = gptHand.filter(c =>
+    !(c.suit === trumpCard.suit && (c.value === 1 || c.value === 3))
+  );
+  const pool = candidates.length > 0 ? candidates : gptHand;
+  const sorted = [...pool].sort((a, b) => {
+    const va = VALUE_POINTS[a.value] || 0;
+    const vb = VALUE_POINTS[b.value] || 0;
+    if (va !== vb) return va - vb;
+    const aVoid = playerVoidSuits.has(a.suit) ? 1 : 0;
+    const bVoid = playerVoidSuits.has(b.suit) ? 1 : 0;
+    if (aVoid !== bVoid) return bVoid - aVoid;
+    // Prefer to dump non-trump
+    const aTrump = a.suit === trumpCard.suit ? 1 : 0;
+    const bTrump = b.suit === trumpCard.suit ? 1 : 0;
+    if (aTrump !== bTrump) return aTrump - bTrump;
+    return getCardRank(a) - getCardRank(b);
+  });
+  return gptHand.indexOf(sorted[0]);
+}
+
+// ============================================================
+// ENDGAME MINIMAX
+// Called only when deck is empty and playerKnownHand.length <= 3.
+// With 3 cards each, the search tree has at most ~36 leaves — instant.
+// Returns the index in gptHand of the optimal play.
+// Objective: maximize (final GPT points - final player points).
+// ============================================================
+function solveEndgame(playerCard, playerKnownHand) {
+  // Resolve a completed trick given leader. Returns 'player' or 'gpt'.
+  function resolveTrick(pCard, gCard, leader) {
+    const leadSuit = leader === 'player' ? pCard.suit : gCard.suit;
+    const pTrump = pCard.suit === trumpCard.suit;
+    const gTrump = gCard.suit === trumpCard.suit;
+    if (pTrump && gTrump) {
+      return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'gpt';
     }
-    
-    // Adjust based on trump scarcity (conserve trumps if few remain)
-    const trumpsRemaining = cardCounts[trumpCard.suit].remaining + trumpsInHand.length;
-    if (trumpsRemaining <= 3 && playerCard.suit !== trumpCard.suit) {
-      trickWorth *= 0.7; // Less valuable if we need to use scarce trumps
+    if (pTrump) return 'player';
+    if (gTrump) return 'gpt';
+    if (leader === 'player') {
+      if (gCard.suit === leadSuit) {
+        return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'gpt';
+      }
+      return 'player';
+    } else {
+      if (pCard.suit === leadSuit) {
+        return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'gpt';
+      }
+      return 'gpt';
     }
-    
-    // Calculate final "worth winning" threshold
-    // Higher threshold means we're more selective about which tricks to win
-    const worthWinningThreshold = gamePhase === 'early' ? 3 : 
-                                  gamePhase === 'mid' ? 2 : 1;
-    
-    const worthWinning = trickWorth >= worthWinningThreshold || 
-                         (deck.length <= 4 && gptPoints < playerPoints);
-    
-    // If we decide it's worth winning this trick
-    if (worthWinning) {
-      // Case 1: Player played trump
-      if (playerCard.suit === trumpCard.suit) {
-        // If we have higher trumps, use the lowest one that will win
-        const winningTrumps = sameSuitCards.filter(c => getCardRank(c) > getCardRank(playerCard));
-        
-        if (winningTrumps.length > 0) {
-          // Find the most efficient winning trump (lowest that still wins)
-          const lowestWinningTrump = winningTrumps.reduce((lowest, current) => 
-            getCardRank(current) < getCardRank(lowest) ? current : lowest, winningTrumps[0]);
-          
-          // Special case: If this is a high value trick, use a higher trump for safety
-          if (playerCardPoints >= 10 && winningTrumps.length > 1) {
-            // Use second lowest trump to win important tricks with safety margin
-            const sortedWinningTrumps = winningTrumps.sort((a, b) => getCardRank(a) - getCardRank(b));
-            return gptHand.indexOf(sortedWinningTrumps[1] || sortedWinningTrumps[0]);
-          }
-          
-          return gptHand.indexOf(lowestWinningTrump);
+  }
+
+  // Recursive search. `pending` is null if no card is on the table yet,
+  // otherwise {card, leader}. Returns net GPT score delta from this subtree.
+  function search(gHand, pHand, leads, pending) {
+    if (!pending && gHand.length === 0 && pHand.length === 0) return 0;
+
+    if (!pending) {
+      // A new trick begins; `leads` plays first.
+      if (leads === 'gpt') {
+        let best = -Infinity;
+        for (const c of gHand) {
+          const v = search(
+            gHand.filter(x => x !== c),
+            pHand,
+            'player',
+            { card: c, leader: 'gpt' }
+          );
+          if (v > best) best = v;
         }
-        
-        // If we can't win with trump, strategic discard based on game phase
-        if (gamePhase === 'early' || gamePhase === 'mid') {
-          // Discard our lowest value card
-          const lowestValueCard = gptHand.reduce((lowest, current) => {
-            const lowestPoints = VALUE_POINTS[lowest.value] || 0;
-            const currentPoints = VALUE_POINTS[current.value] || 0;
-            return currentPoints < lowestPoints ? current : lowest;
-          }, gptHand[0]);
-          
-          return gptHand.indexOf(lowestValueCard);
-        } else {
-          // In late game, consider discarding from suits where player might be void
-          // This reduces the chance of player trumping our high cards later
-          
-          // Find a suit where player might be void (high played count)
-          const suitToDiscard = Object.keys(cardCounts).find(suit => 
-            suit !== trumpCard.suit && 
-            cardCounts[suit].played >= 8 &&
-            gptHand.some(c => c.suit === suit));
-          
-          if (suitToDiscard) {
-            const cardToDiscard = gptHand
-              .filter(c => c.suit === suitToDiscard)
-              .sort((a, b) => (VALUE_POINTS[a.value] || 0) - (VALUE_POINTS[b.value] || 0))[0];
-            
-            return gptHand.indexOf(cardToDiscard);
-          }
-          
-          // Default to lowest value card
-          const lowestValueCard = gptHand.reduce((lowest, current) => {
-            const lowestPoints = VALUE_POINTS[lowest.value] || 0;
-            const currentPoints = VALUE_POINTS[current.value] || 0;
-            return currentPoints < lowestPoints ? current : lowest;
-          }, gptHand[0]);
-          
-          return gptHand.indexOf(lowestValueCard);
+        return best;
+      } else {
+        let worst = Infinity;
+        for (const c of pHand) {
+          const v = search(
+            gHand,
+            pHand.filter(x => x !== c),
+            'gpt',
+            { card: c, leader: 'player' }
+          );
+          if (v < worst) worst = v;
         }
-      }
-      
-      // Case 2: Player didn't play trump, but it's a valuable card or trick
-      
-      // First try to win with the same suit if possible
-      if (sameSuitCards.length > 0) {
-        const winningCards = sameSuitCards.filter(c => getCardRank(c) > getCardRank(playerCard));
-        
-        if (winningCards.length > 0) {
-          // Find the most efficient winning card (lowest that still wins)
-          const lowestWinner = winningCards.reduce((lowest, current) => 
-            getCardRank(current) < getCardRank(lowest) ? current : lowest, winningCards[0]);
-          
-          // Special case: If it's a very high value trick, use a higher card for safety
-          if (playerCardPoints >= 10 && winningCards.length > 1) {
-            // Use second lowest card to win important tricks
-            const sortedWinningCards = winningCards.sort((a, b) => getCardRank(a) - getCardRank(b));
-            return gptHand.indexOf(sortedWinningCards[1] || sortedWinningCards[0]);
-          }
-          
-          return gptHand.indexOf(lowestWinner);
-        }
-      }
-      
-      // If we can't win with same suit, consider using trump
-      if (trumpsInHand.length > 0) {
-        // In early game, be more conservative with trumps
-        if (gamePhase === 'early' && playerCardPoints < 10) {
-          // Only use trump for high value cards in early game
-          if (playerCardPoints < 3) {
-            // Not worth trumping low value cards in early game
-            const lowestCard = gptHand
-              .filter(c => c.suit !== trumpCard.suit)
-              .sort((a, b) => (VALUE_POINTS[a.value] || 0) - (VALUE_POINTS[b.value] || 0))[0] || gptHand[0];
-            
-            return gptHand.indexOf(lowestCard);
-          }
-        }
-        
-        // Use lowest trump to win the trick
-        const lowestTrump = trumpsInHand.reduce((lowest, current) => 
-          getCardRank(current) < getCardRank(lowest) ? current : lowest, trumpsInHand[0]);
-        
-        return gptHand.indexOf(lowestTrump);
+        return worst;
       }
     }
-    
-    // If not worth winning or we can't win
-    
-    // First, try to follow suit with our lowest card
-    if (sameSuitCards.length > 0) {
-      // Special case: If our card would win anyway, consider the value
-      const winningCards = sameSuitCards.filter(c => getCardRank(c) > getCardRank(playerCard));
-      
-      if (winningCards.length > 0) {
-        // We can win - decide if we want to
-        if (playerCardPoints > 0 || gamePhase === 'late') {
-          // Win the trick if there are points or it's late game
-          const lowestWinner = winningCards.reduce((lowest, current) => 
-            getCardRank(current) < getCardRank(lowest) ? current : lowest, winningCards[0]);
-          
-          return gptHand.indexOf(lowestWinner);
-        }
+
+    // A card is on the table; other side responds and trick resolves.
+    const responder = pending.leader === 'gpt' ? 'player' : 'gpt';
+    if (responder === 'gpt') {
+      let best = -Infinity;
+      for (const c of gHand) {
+        const winner = resolveTrick(pending.card, c, pending.leader);
+        const pts = (VALUE_POINTS[pending.card.value] || 0) + (VALUE_POINTS[c.value] || 0);
+        const delta = winner === 'gpt' ? pts : -pts;
+        const v = delta + search(
+          gHand.filter(x => x !== c),
+          pHand,
+          winner,
+          null
+        );
+        if (v > best) best = v;
       }
-      
-      // Otherwise play our lowest card in the suit
-      const lowestCard = sameSuitCards.reduce((lowest, current) => {
-        const lowestPoints = VALUE_POINTS[lowest.value] || 0;
-        const currentPoints = VALUE_POINTS[current.value] || 0;
-        // If points are equal, prefer lower rank
-        if (currentPoints === lowestPoints) {
-          return getCardRank(current) < getCardRank(lowest) ? current : lowest;
-        }
-        return currentPoints < lowestPoints ? current : lowest;
-      }, sameSuitCards[0]);
-      
-      return gptHand.indexOf(lowestCard);
-    }
-    
-    // If we can't follow suit, play strategically
-    
-    // Check if player is likely to have the highest card of any suit
-    // If so, discard high value cards from that suit
-    const vulnerableSuits = [];
-    for (const suit in highestRankBySuit) {
-      if (suit === trumpCard.suit) continue; // Skip trump suit
-      
-      // Check if player might have highest card in this suit
-      const ourHighestInSuit = gptHand
-        .filter(c => c.suit === suit)
-        .sort((a, b) => getCardRank(b) - getCardRank(a))[0];
-      
-      const ourHighestRank = ourHighestInSuit ? getCardRank(ourHighestInSuit) : -1;
-      
-      // If there's a higher card out there that we don't have, this suit is vulnerable
-      if (highestRankBySuit[suit] > ourHighestRank) {
-        vulnerableSuits.push(suit);
+      return best;
+    } else {
+      let worst = Infinity;
+      for (const c of pHand) {
+        const winner = resolveTrick(c, pending.card, pending.leader);
+        const pts = (VALUE_POINTS[pending.card.value] || 0) + (VALUE_POINTS[c.value] || 0);
+        const delta = winner === 'gpt' ? pts : -pts;
+        const v = delta + search(
+          gHand,
+          pHand.filter(x => x !== c),
+          winner,
+          null
+        );
+        if (v < worst) worst = v;
       }
+      return worst;
     }
-    
-    // If we found vulnerable suits, discard high value cards from them
-    if (vulnerableSuits.length > 0) {
-      const vulnerableHighValueCards = gptHand.filter(c => 
-        vulnerableSuits.includes(c.suit) && 
-        (VALUE_POINTS[c.value] || 0) > 0
-      ).sort((a, b) => (VALUE_POINTS[b.value] || 0) - (VALUE_POINTS[a.value] || 0));
-      
-      if (vulnerableHighValueCards.length > 0) {
-        return gptHand.indexOf(vulnerableHighValueCards[0]);
-      }
+  }
+
+  if (playerCard) {
+    // GPT is responding to player's lead.
+    const pHandRemaining = playerKnownHand.filter(x => !cardEq(x, playerCard));
+    let best = -Infinity;
+    let bestIdx = 0;
+    for (let i = 0; i < gptHand.length; i++) {
+      const c = gptHand[i];
+      const winner = resolveTrick(playerCard, c, 'player');
+      const pts = (VALUE_POINTS[playerCard.value] || 0) + (VALUE_POINTS[c.value] || 0);
+      const delta = winner === 'gpt' ? pts : -pts;
+      const v = delta + search(
+        gptHand.filter((_, j) => j !== i),
+        pHandRemaining,
+        winner,
+        null
+      );
+      if (v > best) { best = v; bestIdx = i; }
     }
-    
-    // Otherwise discard our least valuable card overall (avoiding high trumps)
-    const discardableCards = gptHand.filter(c => {
-      // Never discard Ace or Three of trumps if possible
-      if (c.suit === trumpCard.suit && (c.value === 1 || c.value === 3)) {
-        return gptHand.length <= 1; // Only discard if it's our last card
-      }
-      return true;
-    });
-    
-    if (discardableCards.length > 0) {
-      const lowestValueCard = discardableCards.reduce((lowest, current) => {
-        const lowestPoints = VALUE_POINTS[lowest.value] || 0;
-        const currentPoints = VALUE_POINTS[current.value] || 0;
-        return currentPoints < lowestPoints ? current : lowest;
-      }, discardableCards[0]);
-      
-      return gptHand.indexOf(lowestValueCard);
+    return bestIdx;
+  } else {
+    // GPT is leading.
+    let best = -Infinity;
+    let bestIdx = 0;
+    for (let i = 0; i < gptHand.length; i++) {
+      const c = gptHand[i];
+      const v = search(
+        gptHand.filter((_, j) => j !== i),
+        playerKnownHand,
+        'player',
+        { card: c, leader: 'gpt' }
+      );
+      if (v > best) { best = v; bestIdx = i; }
     }
-    
-    // Last resort - just play whatever we have left
-    return 0;
+    return bestIdx;
   }
 }
 

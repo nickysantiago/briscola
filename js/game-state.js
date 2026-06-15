@@ -14,11 +14,15 @@ let playerLeads = true;
 let isProcessingTrick = false;
 let currentGptCard = null;
 let gameActive = false;
-// New variables to track the last won trick cards
+// Variables to track the last won trick cards (for display)
 let playerWonCards = [];
 let gptWonCards = [];
-// New variable to track difficulty level
+// Difficulty level
 let difficulty = 'normal'; // default to normal
+// Full history of every card played so far (for AI card counting)
+let allPlayedCards = [];
+// Suits the player has been observed to be void in (for AI inference)
+let playerVoidSuits = new Set();
 
 // Core game functions
 function shuffleDeck() {
@@ -56,6 +60,9 @@ function startGame() {
   // Reset won cards
   playerWonCards = [];
   gptWonCards = [];
+  // Reset AI tracking state
+  allPlayedCards = [];
+  playerVoidSuits = new Set();
   
   // Remove title screen
   const titleScreen = document.getElementById('title-screen');
@@ -124,7 +131,7 @@ function endGame() {
   }
 }
 
-// New function to get the difficulty name
+// Get the difficulty name for display
 function getDifficultyName() {
   switch(difficulty) {
     case 'easy': return 'Easy';
@@ -170,6 +177,8 @@ export {
   playerWonCards,
   gptWonCards,
   difficulty,
+  allPlayedCards,
+  playerVoidSuits,
   shuffleDeck,
   drawCard,
   dealInitialHands,
@@ -218,13 +227,24 @@ export function removeCardFromGptHand(index) {
   return gptHand.splice(index, 1)[0];
 }
 
-// New functions to track won cards
+// Track won cards (display) AND append to full history (AI)
 export function addCardToPlayerWonCards(playerCard, gptCard) {
-  // Keep only the last trick (2 cards)
+  // Keep only the last trick (2 cards) for display
   playerWonCards = [playerCard, gptCard];
+  // Append to full history for AI card counting
+  if (playerCard) allPlayedCards.push(playerCard);
+  if (gptCard) allPlayedCards.push(gptCard);
 }
 
 export function addCardToGptWonCards(playerCard, gptCard) {
-  // Keep only the last trick (2 cards)
+  // Keep only the last trick (2 cards) for display
   gptWonCards = [playerCard, gptCard];
+  // Append to full history for AI card counting
+  if (playerCard) allPlayedCards.push(playerCard);
+  if (gptCard) allPlayedCards.push(gptCard);
+}
+
+// Mark a suit as one the player has been observed to be void in
+export function markPlayerVoid(suit) {
+  playerVoidSuits.add(suit);
 }

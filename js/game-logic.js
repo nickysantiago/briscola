@@ -26,7 +26,8 @@ import {
   endGame,
   removeCardFromPlayerHand,
   addCardToPlayerWonCards,
-  addCardToGptWonCards
+  addCardToGptWonCards,
+  markPlayerVoid
 } from './game-state.js';
 import { 
   renderGame, 
@@ -111,13 +112,22 @@ function playCard(index) {
 }
 
 function finishTrick(playerCard, gptCard) {
+  // Observe void: if GPT led and player didn't follow suit, player is out of that suit.
+  // (Player must follow suit in Brisca only when deck is empty, but even with the deck
+  // non-empty, choosing not to follow is a reliable signal the player has no cards of
+  // that suit in many variants — we record it either way since the player wouldn't
+  // normally decline to follow suit voluntarily.)
+  if (!playerLeads && playerCard.suit !== gptCard.suit) {
+    markPlayerVoid(gptCard.suit);
+  }
+
   const winner = determineWinner(playerCard, gptCard);
   const trickPoints = (VALUE_POINTS[playerCard.value] || 0) + (VALUE_POINTS[gptCard.value] || 0);
   
   // Update who leads next based on who won
   setPlayerLeads(winner === 'player');
   
-  // Add cards to winner's pile for display
+  // Add cards to winner's pile for display AND full-history tracking
   if (winner === 'player') {
     addCardToPlayerWonCards(playerCard, gptCard);
   } else {
@@ -140,7 +150,7 @@ function finishTrick(playerCard, gptCard) {
   }, CARD_ANIMATION_DELAY);
 }
 
-// New function to animate cards going to the winner
+// Animate cards going to the winner
 function animateCardsToWinner(winner, trickPoints) {
   // Get the played cards
   const playField = document.querySelector('.play-field');
