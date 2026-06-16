@@ -1,0 +1,24 @@
+{
+  "name": "brisca-backend",
+  "version": "1.0.0",
+  "description": "Brisca card game backend — game engine, AI, and Socket.io/Redis server",
+  "type": "module",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "redis": "^4.7.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  },
+  "overrides": {
+    "ws": "^8.21.0"
+  }
+}

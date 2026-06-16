@@ -1,0 +1,52 @@
+# Brisca — 3-container stack: nginx frontend, Node backend, Redis.
+# Compose file format 2.4 so `docker-compose` v1 honours the Redis healthcheck
+# gate (depends_on: condition). Works with the newer `docker compose` v2 too.
+#
+#   docker-compose up -d --build      # build + run
+#   docker-compose down               # stop (Redis data persists in the volume)
+#
+# Only the frontend port is published; the browser reaches the backend through
+# nginx's /socket.io reverse proxy (single origin). LAN-only deployment.
+version: "2.4"
+
+services:
+  frontend:
+    build: ./frontend
+    image: brisca-frontend
+    container_name: brisca-frontend
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"   # published port; override with FRONTEND_PORT (open http://<host>:PORT)
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    image: brisca-backend
+    container_name: brisca-backend
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PORT=3000
+    expose:
+      - "3000"               # internal only; reached via the nginx proxy
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: brisca-redis
+    # AOF (everysec) + RDB save points so game state survives restarts.
+    command: redis-server --appendonly yes --appendfsync everysec --save 900 1 --save 300 10 --save 60 10000
+    volumes:
+      - redis-data:/data     # named volume → survives container recreation
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis-data:
