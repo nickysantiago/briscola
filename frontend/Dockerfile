@@ -9,7 +9,6 @@ USER nginx
 
 # Static site assets, served from the default web root.
 COPY index.html /usr/share/nginx/html/
-COPY style.css /usr/share/nginx/html/
 COPY css/ /usr/share/nginx/html/css/
 COPY js/ /usr/share/nginx/html/js/
 COPY cards/ /usr/share/nginx/html/cards/

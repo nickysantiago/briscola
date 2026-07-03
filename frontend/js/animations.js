@@ -1,16 +1,12 @@
 // animations.js - The card-movement animation engine.
 //
-// This is the DOM/animation half of the original game-logic.js + ai-player.js,
-// relocated to the client and driven by the server's `trickResolved` outcome
-// instead of by local game logic. Every floating-card flight, the won-cards
-// fly-to-pile, the points popup, and — crucially — the exact setTimeout timings
-// (10 / 500 / 800 / 1000 / CARD_ANIMATION_DELAY) are reproduced verbatim so the
-// game looks and feels identical to the pre-migration build.
-//
-// There are two timing "chains", exactly as before:
-//   - humanLed: player card flies in, pause, AI response flies in, pause, resolve.
-//   - human responds: the AI card is already on the field; the player's card flies
-//     in next to it, pause, resolve. (~1s shorter — matches the original.)
+// Drives every floating-card flight, the won-cards fly-to-pile, and the points
+// popup from the server's `trickResolved` outcome. All animation timing lives
+// here, in two chains:
+//   - human led: their card flies in, pause, the AI's response flies in, pause,
+//     the trick resolves.
+//   - human responded: the AI's card is already on the field; the player's card
+//     flies in next to it, pause, the trick resolves (~1s shorter).
 
 import { CARD_ANIMATION_DELAY } from './constants.js';
 import { clientState } from './client-state.js';
@@ -29,8 +25,8 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const cardImg = (card) => `cards/${card.value}_of_${card.suit.toLowerCase()}.png`;
 
 // Fly the human's just-played card from its spot in the hand to the play area.
-// Ported from game-logic.js playCard() (the floating-card half). `index` is the
-// hand slot that was clicked; the hand has not re-rendered yet, so it's still in the DOM.
+// `index` is the hand slot that was clicked; the hand has not re-rendered yet,
+// so the card element is still in the DOM.
 function flyPlayerCard(playerCard, index, trumpSuit) {
   return new Promise((resolve) => {
     const selectedCard = document.querySelectorAll('.hand .card')[index];
@@ -63,8 +59,8 @@ function flyPlayerCard(playerCard, index, trumpSuit) {
   });
 }
 
-// Fly the AI card in when it is RESPONDING to the human's lead (enters from the
-// right). Ported from ai-player.js makeAiPlay() respond branch.
+// Fly the AI's card in when it is RESPONDING to the human's lead (enters from
+// the right).
 function flyAiResponse(aiCard, trumpSuit) {
   return new Promise((resolve) => {
     const cardElement = document.createElement('div');
@@ -93,8 +89,7 @@ function flyAiResponse(aiCard, trumpSuit) {
   });
 }
 
-// Fly the AI card in when it is LEADING a new trick (enters from the top center).
-// Ported from ai-player.js makeAiPlay() lead branch.
+// Fly the AI's card in when it is LEADING a new trick (enters from the top center).
 function flyAiLead(aiCard, trumpSuit) {
   return new Promise((resolve) => {
     const cardElement = document.createElement('div');
@@ -123,7 +118,7 @@ function flyAiLead(aiCard, trumpSuit) {
 }
 
 // Animate the two played cards flying to the winner's pile, with the status
-// message and points popup. Ported from game-logic.js animateCardsToWinner().
+// message and points popup.
 function animateCardsToWinner(winner, trickPoints) {
   return new Promise((resolve) => {
     const playField = document.querySelector('.play-field');
@@ -197,10 +192,10 @@ async function playTrickAnimation(outcome, ctx) {
   // 1. Player's card flies to the play area.
   await flyPlayerCard(playerCard, ctx.clickedIndex, trumpSuit);
 
-  // 2. Get both cards onto the field. The two chains mirror the original exactly:
-  //    when the human led, the AI response flies in after CARD_ANIMATION_DELAY and
-  //    runs concurrently with the resolve delay below (fire-and-forget, as makeAiPlay
-  //    did). When the human responded, the AI card is already on the field.
+  // 2. Get both cards onto the field. When the human led, the AI's response
+  //    flies in after CARD_ANIMATION_DELAY, concurrently with the resolve delay
+  //    below (fire-and-forget). When the human responded, the AI's card is
+  //    already on the field.
   if (humanLed) {
     createPlayField(playerCard);
     await delay(CARD_ANIMATION_DELAY);
@@ -213,7 +208,7 @@ async function playTrickAnimation(outcome, ctx) {
   await delay(CARD_ANIMATION_DELAY);
   await animateCardsToWinner(winner, trickPoints);
 
-  // 4. Settle the board (continueAfterAnimation equivalent).
+  // 4. Settle the board.
   if (gameOver) {
     renderGameOver();
     return;
@@ -222,8 +217,8 @@ async function playTrickAnimation(outcome, ctx) {
   if (playArea) playArea.innerHTML = '';
   renderGame(); // reads the already-applied settled snapshot from clientState
 
-  // 5. If the AI won, it leads the next trick — fly its lead card in (mirrors the
-  //    old renderGame-triggered makeAiPlay lead), then the human can respond.
+  // 5. If the AI won, it leads the next trick — fly its lead card in, then the
+  //    human can respond.
   if (aiLead) {
     await delay(CARD_ANIMATION_DELAY);
     await flyAiLead(aiLead.card, trumpSuit);

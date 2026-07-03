@@ -1,15 +1,14 @@
-// controller.js - Front-end controller. Wires user input and Socket.io events to
-// the renderer and animation engine. Replaces the old inline <script> in index.html
-// and the local game-logic/game-state calls: a card click now emits a socket event,
-// and the server's responses drive the (unchanged) animations and rendering.
+// controller.js - Front-end controller. Wires user input and Socket.io events
+// to the renderer and animation engine: a card click emits a socket event, and
+// the server's responses drive the animations and rendering.
 
 import { socket, emitNewGame, emitPlayCard, emitResume } from './net.js';
 import { clientState, applySnapshot, getStoredGameId, clearStoredGameId } from './client-state.js';
 import { renderGame, renderGameOver, createAiPlayField } from './ui-renderer.js';
 import { playTrickAnimation } from './animations.js';
 
-// UX lock (the former isProcessingTrick): blocks clicks while a trick animates.
-// The server's seq turn-guard is the real authority; this is purely cosmetic.
+// UX lock: blocks clicks while a trick animates. The server's seq turn-guard
+// is the real authority; this is purely cosmetic.
 let busy = false;
 // The hand slot the human last clicked, used to anchor the fly-out animation.
 let lastIndex = null;
@@ -53,9 +52,13 @@ socket.on('gameState', (snapshot) => {
 });
 
 socket.on('trickResolved', (outcome) => {
-  playTrickAnimation(outcome, { clickedIndex: lastIndex }).then(() => {
-    busy = false;
-  });
+  // Always release the lock, even if an animation step throws — otherwise the
+  // board would be stuck ignoring clicks for the rest of the game.
+  playTrickAnimation(outcome, { clickedIndex: lastIndex })
+    .catch((err) => console.error('[brisca] animation failed:', err))
+    .finally(() => {
+      busy = false;
+    });
 });
 
 socket.on('errorState', (err) => {
@@ -94,8 +97,9 @@ function wireDifficultyButtons() {
   if (hard) hard.addEventListener('click', () => startNewGame('hard'));
 }
 
-// Recreate/show the difficulty selection. Ported from the original index.html
-// inline script (the title screen is wiped once a game's board has rendered).
+// Recreate/show the difficulty selection. The static title screen from
+// index.html is wiped from the DOM once a game board has rendered, so "New
+// Game" rebuilds an identical one.
 function showDifficultySelection() {
   let titleScreen = document.getElementById('title-screen');
   if (!titleScreen) {
@@ -119,7 +123,7 @@ function showDifficultySelection() {
             <small>Strategic plays</small>
           </button>
           <button id="hard-mode" class="difficulty-button hard">
-            <span>Good Luck</span>
+            <span>Hard</span>
             <small>Expert strategy</small>
           </button>
         </div>

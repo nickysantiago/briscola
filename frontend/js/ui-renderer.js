@@ -1,12 +1,8 @@
-// ui-renderer.js - UI rendering functions with enhanced animations.
+// ui-renderer.js - All DOM rendering, driven by the client-side snapshot.
 //
-// Rewired for the backend migration: this module now reads from the client-side
-// `clientState` (populated by Socket.io `gameState` snapshots) instead of the
-// former game-state.js, and it no longer triggers AI moves (the server decides
-// those, and animations.js drives the AI's card flights). Every piece of DOM
-// building and every CSS class is unchanged from the pre-migration version, so the
-// board looks identical. `aiHand.length` / `deck.length` became the public
-// counts `aiHandCount` / `deckCount`.
+// Reads from `clientState`, which is kept in sync by Socket.io `gameState`
+// snapshots. The server never reveals the AI's hand or the deck contents, so
+// the board shows the public counts `aiHandCount` / `deckCount` instead.
 
 import { clientState } from './client-state.js';
 
@@ -74,7 +70,7 @@ function renderGame() {
     <div class="hand">
       <h2>Your Hand (${clientState.playerHand.length}):</h2>
       <div class="cards-container ${clientState.playerLeads ? 'your-turn' : ''}">
-        ${clientState.playerHand.map((card, index) => renderCard(card, index)).join('')}
+        ${clientState.playerHand.map((card, index) => renderCardImage(card, index, true)).join('')}
       </div>
     </div>
   `;
@@ -96,10 +92,9 @@ function renderGame() {
   }
 }
 
-// Render the game-over panel. Ported from the original game-state.js endGame().
-// On a fresh-load resume of a finished game the board has not been built yet, so
-// build it first; mid-game (the trick that ended the game) the board already
-// exists and we only drop the panel into the play area, matching the original.
+// Render the game-over panel. On a fresh-load resume of a finished game the
+// board has not been built yet, so build it first; mid-game (the trick that
+// ended the game) the board already exists and only the panel is dropped in.
 function renderGameOver() {
   let playArea = document.getElementById('play-area');
   if (!playArea) {
@@ -141,11 +136,8 @@ function renderGameOver() {
   }
 }
 
-function renderCard(card, index) {
-  // Hand cards are clickable; the controller's window.playCard guards illegal/locked clicks.
-  return renderCardImage(card, index, true);
-}
-
+// Clickable hand cards get an onclick that calls the controller's global
+// playCard(index), which guards illegal/locked clicks.
 function renderCardImage(card, index, clickable) {
   if (!card) {
     console.error('Trying to render null or undefined card');
@@ -296,12 +288,9 @@ function renderWonCards(cards) {
 export {
   renderGame,
   renderGameOver,
-  renderCard,
-  renderCardImage,
   createPlayField,
   addAiCardToPlayField,
   createAiPlayField,
   addPlayerCardToPlayField,
-  showPointsAnimation,
-  renderWonCards
+  showPointsAnimation
 };

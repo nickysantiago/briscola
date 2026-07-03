@@ -1,7 +1,7 @@
 // Headless protocol test — drives the real Socket.io server with no browser.
 // Requires the backend running and reachable at BACKEND_URL (default :3000).
 //
-//   node backend/test/socket-smoke.mjs
+//   node scripts/socket-smoke.mjs        (from the backend/ directory)
 //
 // Exercises: newGame, a full game via playCard, mid-game resume on a fresh
 // connection, the stale-seq turn guard, and post-game-over rejection.

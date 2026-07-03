@@ -18,10 +18,9 @@
   }
 }
 
-/* Card transition animations */
+/* Card transition that drives the floating-card flights. */
 .card {
-  /* Add transitions for smoother animations */
-  transition: transform 0.3s ease, top 0.8s ease, left 0.8s ease, position 0.5s ease, opacity 0.5s ease;
+  transition: transform 0.3s ease, top 0.8s ease, left 0.8s ease, opacity 0.5s ease;
 }
 
 /* Appear animation for new cards */
@@ -60,7 +59,8 @@
   animation: statusHighlight 1.5s ease;
 }
 
-/* Winner pile animation entry points */
+/* Winner piles: fixed-position targets the trick cards fly to, and positioned
+   containers for the stacked won cards. */
 .winner-pile-player,
 .winner-pile-ai {
   position: fixed;
@@ -72,8 +72,6 @@
   border-radius: 10px;
   background-color: rgba(0, 0, 0, 0.05);
   overflow: visible;
-  /* Make pile a positioned container for stacked cards */
-  position: fixed;
 }
 
 .winner-pile-player {
@@ -89,7 +87,6 @@
 /* Add labels to the piles */
 .winner-pile-player::before,
 .winner-pile-ai::before {
-  content: attr(data-label);
   position: absolute;
   font-size: 0.8rem;
   background-color: rgba(255, 255, 255, 0.7);

@@ -1,22 +1,20 @@
 // ai.js - AI opponent logic, server-side.
 //
-// Ported from the original client-side js/ai-player.js. The strategy functions are
-// reproduced verbatim (easy/normal/hard, including the hand-tuned hard mode and the
-// perfect-information endgame minimax) with two mechanical changes only:
-//   1. module-level state imports become reads off the passed-in `state` object;
-//   2. all DOM/animation code from makeAiPlay is removed (that lives on the client).
-// Suit comparisons use state.trumpSuit (never state.trumpCard.suit) — GOTCHA #1.
+// Three difficulty levels: easy (random), normal (greedy heuristics), and hard
+// (card counting, void tracking, and a perfect-information endgame minimax).
+// All strategy functions read the passed-in `state` and pick a card by index;
+// suit comparisons use state.trumpSuit (never state.trumpCard.suit, which is
+// picked up into a hand late-game).
 
-import { VALUE_POINTS, SUITS } from './constants.js';
+import { VALUE_POINTS, SUITS, VALUES } from './constants.js';
 import { getCardRank } from './engine.js';
 
 // ------------------------------------------------------------------
-// Entry points used by the engine
+// Entry point used by the engine
 // ------------------------------------------------------------------
 
-// Pick the AI's card and remove it from its hand. `playerCard` is the human's lead
-// when the AI is responding, or null when the AI is leading. Equivalent to the
-// original makeAiPlay minus the animation.
+// Pick the AI's card and remove it from its hand. `playerCard` is the human's
+// lead when the AI is responding, or null when the AI is leading.
 function chooseAiCard(state, playerCard = null) {
   if (state.aiHand.length === 0) return null;
 
@@ -36,11 +34,6 @@ function chooseAiCard(state, playerCard = null) {
   }
 
   return state.aiHand.splice(idx, 1)[0];
-}
-
-// The AI leads a new trick (no card to respond to).
-function leadForAi(state) {
-  return chooseAiCard(state, null);
 }
 
 // ------------------------------------------------------------------
@@ -118,11 +111,11 @@ function cardEq(a, b) {
   return !!a && !!b && a.suit === b.suit && a.value === b.value;
 }
 
-// Build the set of cards AI has not seen (not in its hand, not played).
+// Build the set of cards the AI has not seen (not in its hand, not played).
 function computeUnseen(state) {
   const full = [];
   for (const suit of SUITS) {
-    for (const value of [1, 2, 3, 4, 5, 6, 7, 10, 11, 12]) {
+    for (const value of VALUES) {
       full.push({ suit, value });
     }
   }
@@ -305,43 +298,43 @@ function solveEndgame(state, playerCard, playerKnownHand) {
   const trumpSuit = state.trumpSuit;
   const aiHand = state.aiHand;
 
-  function resolveTrick(pCard, gCard, leader) {
-    const leadSuit = leader === 'player' ? pCard.suit : gCard.suit;
+  function resolveTrick(pCard, aCard, leader) {
+    const leadSuit = leader === 'player' ? pCard.suit : aCard.suit;
     const pTrump = pCard.suit === trumpSuit;
-    const gTrump = gCard.suit === trumpSuit;
-    if (pTrump && gTrump) {
-      return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'ai';
+    const aTrump = aCard.suit === trumpSuit;
+    if (pTrump && aTrump) {
+      return getCardRank(pCard) > getCardRank(aCard) ? 'player' : 'ai';
     }
     if (pTrump) return 'player';
-    if (gTrump) return 'ai';
+    if (aTrump) return 'ai';
     if (leader === 'player') {
-      if (gCard.suit === leadSuit) {
-        return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'ai';
+      if (aCard.suit === leadSuit) {
+        return getCardRank(pCard) > getCardRank(aCard) ? 'player' : 'ai';
       }
       return 'player';
     } else {
       if (pCard.suit === leadSuit) {
-        return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'ai';
+        return getCardRank(pCard) > getCardRank(aCard) ? 'player' : 'ai';
       }
       return 'ai';
     }
   }
 
-  function search(gHand, pHand, leads, pending) {
-    if (!pending && gHand.length === 0 && pHand.length === 0) return 0;
+  function search(aiCards, playerCards, leads, pending) {
+    if (!pending && aiCards.length === 0 && playerCards.length === 0) return 0;
 
     if (!pending) {
       if (leads === 'ai') {
         let best = -Infinity;
-        for (const c of gHand) {
-          const v = search(gHand.filter(x => x !== c), pHand, 'player', { card: c, leader: 'ai' });
+        for (const c of aiCards) {
+          const v = search(aiCards.filter(x => x !== c), playerCards, 'player', { card: c, leader: 'ai' });
           if (v > best) best = v;
         }
         return best;
       } else {
         let worst = Infinity;
-        for (const c of pHand) {
-          const v = search(gHand, pHand.filter(x => x !== c), 'ai', { card: c, leader: 'player' });
+        for (const c of playerCards) {
+          const v = search(aiCards, playerCards.filter(x => x !== c), 'ai', { card: c, leader: 'player' });
           if (v < worst) worst = v;
         }
         return worst;
@@ -351,21 +344,21 @@ function solveEndgame(state, playerCard, playerKnownHand) {
     const responder = pending.leader === 'ai' ? 'player' : 'ai';
     if (responder === 'ai') {
       let best = -Infinity;
-      for (const c of gHand) {
+      for (const c of aiCards) {
         const winner = resolveTrick(pending.card, c, pending.leader);
         const pts = (VALUE_POINTS[pending.card.value] || 0) + (VALUE_POINTS[c.value] || 0);
         const delta = winner === 'ai' ? pts : -pts;
-        const v = delta + search(gHand.filter(x => x !== c), pHand, winner, null);
+        const v = delta + search(aiCards.filter(x => x !== c), playerCards, winner, null);
         if (v > best) best = v;
       }
       return best;
     } else {
       let worst = Infinity;
-      for (const c of pHand) {
+      for (const c of playerCards) {
         const winner = resolveTrick(c, pending.card, pending.leader);
         const pts = (VALUE_POINTS[pending.card.value] || 0) + (VALUE_POINTS[c.value] || 0);
         const delta = winner === 'ai' ? pts : -pts;
-        const v = delta + search(gHand, pHand.filter(x => x !== c), winner, null);
+        const v = delta + search(aiCards, playerCards.filter(x => x !== c), winner, null);
         if (v < worst) worst = v;
       }
       return worst;
@@ -374,7 +367,7 @@ function solveEndgame(state, playerCard, playerKnownHand) {
 
   if (playerCard) {
     // AI is responding to player's lead.
-    const pHandRemaining = playerKnownHand.filter(x => !cardEq(x, playerCard));
+    const playerCardsRemaining = playerKnownHand.filter(x => !cardEq(x, playerCard));
     let best = -Infinity;
     let bestIdx = 0;
     for (let i = 0; i < aiHand.length; i++) {
@@ -382,7 +375,7 @@ function solveEndgame(state, playerCard, playerKnownHand) {
       const winner = resolveTrick(playerCard, c, 'player');
       const pts = (VALUE_POINTS[playerCard.value] || 0) + (VALUE_POINTS[c.value] || 0);
       const delta = winner === 'ai' ? pts : -pts;
-      const v = delta + search(aiHand.filter((_, j) => j !== i), pHandRemaining, winner, null);
+      const v = delta + search(aiHand.filter((_, j) => j !== i), playerCardsRemaining, winner, null);
       if (v > best) { best = v; bestIdx = i; }
     }
     return bestIdx;
@@ -401,12 +394,7 @@ function solveEndgame(state, playerCard, playerKnownHand) {
 
 export {
   chooseAiCard,
-  leadForAi,
-  playEasyMode,
-  playNormalMode,
   playHardMode,
   computeUnseen,
-  indexOfCheapestDiscard,
-  solveEndgame,
-  cardEq
+  solveEndgame
 };

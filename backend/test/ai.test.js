@@ -4,12 +4,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { playHardMode, solveEndgame, computeUnseen } from '../game/ai.js';
-import { SUITS } from '../game/constants.js';
+import { SUITS, VALUES } from '../game/constants.js';
 
 function allCards() {
   const all = [];
   for (const suit of SUITS) {
-    for (const value of [1, 2, 3, 4, 5, 6, 7, 10, 11, 12]) all.push({ suit, value });
+    for (const value of VALUES) all.push({ suit, value });
   }
   return all;
 }

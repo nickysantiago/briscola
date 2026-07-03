@@ -1,14 +1,13 @@
 // engine.js - Pure Brisca rules, server-side.
 //
-// Refactored from the original client-side js/game-state.js and the LOGIC half of
-// js/game-logic.js. All functions operate on a passed-in plain `state` object
-// (no module-level singletons, no DOM, no setTimeout). The `state` is fully
-// JSON-serializable so it can be persisted to Redis verbatim.
+// All functions operate on a passed-in plain `state` object (no module-level
+// singletons, no DOM, no timers). The state is fully JSON-serializable so it
+// can be persisted to Redis verbatim.
 //
 // Card shape: { suit: string, value: number }
 
 import { SUITS, VALUES, VALUE_POINTS, RANK_MAP, INITIAL_HAND_SIZE } from './constants.js';
-import { chooseAiCard, leadForAi } from './ai.js';
+import { chooseAiCard } from './ai.js';
 
 const DIFFICULTIES = ['easy', 'normal', 'hard'];
 
@@ -16,8 +15,8 @@ const DIFFICULTIES = ['easy', 'normal', 'hard'];
 // State construction
 // ------------------------------------------------------------------
 
-// Create a fresh game state. The deck is shuffled, both hands dealt, and the
-// trump drawn. The human always leads the first trick (matches the original).
+// Create a fresh game state: shuffled deck, both hands dealt, trump drawn.
+// The human always leads the first trick.
 function createGame(difficulty, gameId) {
   const diff = DIFFICULTIES.includes(difficulty) ? difficulty : 'normal';
 
@@ -25,21 +24,21 @@ function createGame(difficulty, gameId) {
     gameId,
     difficulty: diff,
     gameActive: true,
-    seq: 0,
+    seq: 0,              // turn token; incremented after every resolved trick
     deck: [],
     playerHand: [],
     aiHand: [],
     playerPoints: 0,
     aiPoints: 0,
     trumpCard: null,
-    trumpSuit: '',       // captured once; rules read this, never trumpCard.suit (GOTCHA #1)
+    trumpSuit: '',       // captured once at deal; rules read this, never trumpCard.suit
     trumpTaken: false,   // becomes true when the trump is picked up on the deck===1 trick
     playerLeads: true,
-    currentAiCard: null,
+    currentAiCard: null, // set while the AI has led and awaits the human's response
     playerWonCards: [],
     aiWonCards: [],
     allPlayedCards: [],  // AI card-counting history (both cards of every resolved trick)
-    playerVoidSuits: []  // ARRAY, not Set, so it serializes cleanly (GOTCHA #4)
+    playerVoidSuits: []  // suits the player failed to follow; an array so it serializes cleanly
   };
 
   shuffleDeck(state);
@@ -54,9 +53,9 @@ function createGame(difficulty, gameId) {
 // Deck
 // ------------------------------------------------------------------
 
-// NOTE: ported verbatim from the original (a biased `Math.random()` sort).
-// A uniform Fisher-Yates replacement is intended as a separate, isolated commit
-// so the golden-master AI tests can attribute any behavior change to the shuffle.
+// NOTE: a biased `Math.random()` sort. A uniform Fisher-Yates replacement is
+// intended as a separate, isolated commit so the golden-master tests can
+// attribute any behavior change to the shuffle.
 function shuffleDeck(state) {
   state.deck = [];
   for (const suit of SUITS) {
@@ -129,16 +128,16 @@ function markPlayerVoid(state, suit) {
 }
 
 // Observe void: only when the human is RESPONDING (aiCard is the lead) and they
-// fail to follow the lead suit. Mirrors game-logic.js:120-122. Must run before the
-// AI computes its next lead (GOTCHA #2).
+// fail to follow the lead suit. Must run before the AI computes its next lead so
+// hard mode can use the fresh inference.
 function recordVoidIfBroke(state, playerCard, aiCard) {
   if (playerCard.suit !== aiCard.suit) {
     markPlayerVoid(state, aiCard.suit);
   }
 }
 
-// Store the just-completed trick for the winner's display pile AND append both
-// cards to the full history. Ported from addCardTo*WonCards in game-state.js.
+// Store the just-completed trick for the winner's display pile (which shows only
+// the most recent trick) AND append both cards to the card-counting history.
 function recordTrick(state, winner, playerCard, aiCard) {
   if (winner === 'player') {
     state.playerWonCards = [playerCard, aiCard];
@@ -149,12 +148,11 @@ function recordTrick(state, winner, playerCard, aiCard) {
   if (aiCard) state.allPlayedCards.push(aiCard);
 }
 
-// Draw cards after a trick. Ported from continueAfterAnimation (game-logic.js:251-269).
-// The trick WINNER draws first / draws the last deck card. On the deck===1 trick the
-// winner takes the last deck card and the LOSER picks up the trump (trumpCard object is
-// kept intact for display; only trumpTaken flips — GOTCHA #1).
-// Returns what to tell the client to animate (the human's own draw + a count bump for
-// the AI; the AI's drawn card is never revealed — GOTCHA #6).
+// Draw cards after a trick. The trick WINNER draws first. On the deck===1 trick
+// the winner takes the last deck card and the LOSER picks up the trump (the
+// trumpCard object is kept intact for display; only trumpTaken flips).
+// Returns what to tell the client to animate: the human's own draw plus a count
+// bump for the AI — the AI's drawn card is never revealed.
 function drawLogic(state, winner) {
   const winnerIsPlayer = winner === 'player';
   let playerDraw = null;
@@ -252,8 +250,8 @@ function applyPlayerMove(state, index) {
     gameOver = computeGameOver(state);
   } else if (winner === 'ai') {
     // The AI won, so it leads the next trick. state.playerLeads is already false,
-    // so leadForAi() sees "AI is leading". Void/draw are already applied above.
-    aiLead = leadForAi(state); // splices from aiHand
+    // so the AI knows it is leading. Void/draw are already applied above.
+    aiLead = chooseAiCard(state, null); // splices from aiHand
     state.currentAiCard = aiLead;
   }
 
@@ -273,7 +271,8 @@ function applyPlayerMove(state, index) {
 
 // ------------------------------------------------------------------
 // Public, anti-cheat projection sent to the browser. Never includes aiHand or
-// deck contents (only counts), nor the AI's private inference state (GOTCHA #6).
+// deck contents (only counts), nor the AI's private inference state, so the
+// opponent cannot be read from devtools.
 // ------------------------------------------------------------------
 function toSnapshot(state) {
   return {
@@ -297,16 +296,9 @@ function toSnapshot(state) {
 
 export {
   createGame,
-  shuffleDeck,
-  drawCard,
-  dealInitialHands,
   getCardRank,
   determineWinner,
-  markPlayerVoid,
-  recordVoidIfBroke,
-  recordTrick,
   drawLogic,
-  computeGameOver,
   applyPlayerMove,
   toSnapshot
 };
