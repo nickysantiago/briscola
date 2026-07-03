@@ -180,14 +180,15 @@ test('full game is reproducible under a fixed seed', () => {
   assert.equal(playGame('hard', 42).line, playGame('hard', 42).line);
 });
 
-// Golden-master regression anchors: locks in the CURRENT ported behavior so the
-// upcoming Fisher-Yates shuffle change (or any future refactor) is caught.
+// Golden-master regression anchors: lock in the current engine + AI behavior so
+// any refactor that unintentionally changes game flow is caught. Regenerate the
+// transcripts deliberately when behavior is meant to change.
 test('golden master: hard seed=42 transcript is stable', () => {
-  const GOLDEN = '39-81|O11-O6:p,B4-E7:p,C7-C11:a,B2-E2:p,B12-E4:p,E12-E11:p,E5-O5:p,C12-O2:p,C3-C4:p,O4-O10:a,C1-E6:a,E3-C6:a,O12-E10:a,C5-O3:a,C2-B11:a,B5-O7:p,C10-B6:a,E1-B3:a,B10-B1:a,B7-O1:p';
+  const GOLDEN = '59-61|E5-C10:p,B3-B12:p,O7-O10:a,E1-E6:p,C5-C11:a,B10-E10:a,O11-B1:p,C7-C3:a,O1-E2:p,B4-E4:p,C1-O5:a,B5-B11:a,C12-E3:a,B6-E12:a,O2-E11:p,O4-O6:a,B2-B7:a,C4-O3:a,C2-E7:a,O12-C6:p';
   assert.equal(playGame('hard', 42).line, GOLDEN);
 });
 
 test('golden master: normal seed=7 transcript is stable', () => {
-  const GOLDEN = '21-99|B4-E4:a,E6-E1:a,E11-E12:a,C4-C3:a,E7-B1:p,C10-E2:a,C2-O12:a,O4-C5:a,B2-O6:a,B12-E10:a,O10-E5:a,B6-B3:a,O11-O3:a,B5-O2:a,B10-C12:a,O7-C7:a,C11-O1:a,B11-C6:a,C1-O5:a,E3-B7:p';
+  const GOLDEN = '27-93|O1-C5:a,B10-E6:a,C11-O10:p,C10-E2:p,B3-O6:p,O5-O3:a,C4-E3:p,O12-C3:a,O7-E12:a,E1-B11:a,O4-C7:a,B6-C12:a,E4-E5:a,B12-B1:a,B7-E10:a,O11-B5:a,B2-E11:a,E7-C2:a,B4-C1:a,C6-O2:p';
   assert.equal(playGame('normal', 7).line, GOLDEN);
 });

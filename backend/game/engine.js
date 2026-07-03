@@ -53,9 +53,7 @@ function createGame(difficulty, gameId) {
 // Deck
 // ------------------------------------------------------------------
 
-// NOTE: a biased `Math.random()` sort. A uniform Fisher-Yates replacement is
-// intended as a separate, isolated commit so the golden-master tests can
-// attribute any behavior change to the shuffle.
+// Build the 40-card deck and shuffle it uniformly (Fisher-Yates).
 function shuffleDeck(state) {
   state.deck = [];
   for (const suit of SUITS) {
@@ -63,7 +61,10 @@ function shuffleDeck(state) {
       state.deck.push({ suit, value });
     }
   }
-  state.deck = state.deck.sort(() => Math.random() - 0.5);
+  for (let i = state.deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [state.deck[i], state.deck[j]] = [state.deck[j], state.deck[i]];
+  }
 }
 
 function drawCard(state) {
