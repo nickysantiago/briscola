@@ -37,26 +37,26 @@ const E = v => ({ suit: 'Espadas', value: v });
 test('determineWinner: both trump → higher rank wins', () => {
   const s = { trumpSuit: 'Oros', playerLeads: true };
   assert.equal(determineWinner(s, O(1), O(3)), 'player'); // Ace(9) > 3(8)
-  assert.equal(determineWinner(s, O(3), O(1)), 'gpt');
+  assert.equal(determineWinner(s, O(3), O(1)), 'ai');
 });
 
 test('determineWinner: only one side trumps', () => {
   const s = { trumpSuit: 'Oros', playerLeads: true };
   assert.equal(determineWinner(s, O(2), C(1)), 'player'); // player trumps a non-trump Ace
-  assert.equal(determineWinner(s, C(1), O(2)), 'gpt');     // gpt trumps
+  assert.equal(determineWinner(s, C(1), O(2)), 'ai');     // AI trumps
 });
 
 test('determineWinner: no trump, player leads', () => {
   const s = { trumpSuit: 'Oros', playerLeads: true };
-  assert.equal(determineWinner(s, C(5), C(1)), 'gpt');     // gpt follows higher
+  assert.equal(determineWinner(s, C(5), C(1)), 'ai');     // AI follows higher
   assert.equal(determineWinner(s, C(1), C(5)), 'player');  // player higher
-  assert.equal(determineWinner(s, C(5), E(1)), 'player');  // gpt off-suit, no trump
+  assert.equal(determineWinner(s, C(5), E(1)), 'player');  // AI off-suit, no trump
 });
 
-test('determineWinner: no trump, gpt leads', () => {
+test('determineWinner: no trump, AI leads', () => {
   const s = { trumpSuit: 'Oros', playerLeads: false };
   assert.equal(determineWinner(s, C(1), C(5)), 'player');  // player follows higher
-  assert.equal(determineWinner(s, E(1), C(5)), 'gpt');     // player off-suit, no trump
+  assert.equal(determineWinner(s, E(1), C(5)), 'ai');     // player off-suit, no trump
 });
 
 // ------------------------------------------------------------------
@@ -64,41 +64,41 @@ test('determineWinner: no trump, gpt leads', () => {
 // ------------------------------------------------------------------
 test('drawLogic: deck>=2, winner (player) draws first', () => {
   const top = C(7), next = E(6);
-  const s = { deck: [E(2), next, top], playerHand: [], gptHand: [], trumpCard: O(5), trumpTaken: false };
+  const s = { deck: [E(2), next, top], playerHand: [], aiHand: [], trumpCard: O(5), trumpTaken: false };
   const r = drawLogic(s, 'player');
   assert.deepEqual(s.playerHand[0], top);   // winner gets the popped (last) card first
-  assert.deepEqual(s.gptHand[0], next);
-  assert.equal(r.gptDrew, true);
+  assert.deepEqual(s.aiHand[0], next);
+  assert.equal(r.aiDrew, true);
   assert.equal(r.trumpPickedUp, false);
   assert.equal(s.deck.length, 1);
 });
 
-test('drawLogic: deck===1, player won → player draws last card, gpt picks up trump', () => {
+test('drawLogic: deck===1, player won → player draws last card, AI picks up trump', () => {
   const last = C(7), trump = O(5);
-  const s = { deck: [last], playerHand: [], gptHand: [], trumpCard: trump, trumpTaken: false };
+  const s = { deck: [last], playerHand: [], aiHand: [], trumpCard: trump, trumpTaken: false };
   const r = drawLogic(s, 'player');
   assert.deepEqual(s.playerHand[0], last);
-  assert.deepEqual(s.gptHand[0], trump);
+  assert.deepEqual(s.aiHand[0], trump);
   assert.equal(s.trumpTaken, true);
   assert.equal(r.trumpPickedUp, true);
   assert.equal(s.deck.length, 0);
 });
 
-test('drawLogic: deck===1, gpt won → gpt draws last card, player picks up trump', () => {
+test('drawLogic: deck===1, AI won → AI draws last card, player picks up trump', () => {
   const last = C(7), trump = O(5);
-  const s = { deck: [last], playerHand: [], gptHand: [], trumpCard: trump, trumpTaken: false };
-  const r = drawLogic(s, 'gpt');
-  assert.deepEqual(s.gptHand[0], last);
+  const s = { deck: [last], playerHand: [], aiHand: [], trumpCard: trump, trumpTaken: false };
+  const r = drawLogic(s, 'ai');
+  assert.deepEqual(s.aiHand[0], last);
   assert.deepEqual(s.playerHand[0], trump);
   assert.equal(s.trumpTaken, true);
   assert.deepEqual(r.player, trump); // the human's pickup is reported (it's their own card)
 });
 
 test('drawLogic: deck empty → no draws', () => {
-  const s = { deck: [], playerHand: [], gptHand: [], trumpCard: O(5), trumpTaken: true };
+  const s = { deck: [], playerHand: [], aiHand: [], trumpCard: O(5), trumpTaken: true };
   const r = drawLogic(s, 'player');
   assert.equal(r.player, null);
-  assert.equal(r.gptDrew, false);
+  assert.equal(r.aiDrew, false);
   assert.equal(s.playerHand.length, 0);
 });
 
@@ -109,7 +109,7 @@ test('createGame: initial invariants', () => {
   const s = createGame('hard', 'g1');
   assert.equal(s.deck.length, 33);          // 40 - 6 dealt - 1 trump
   assert.equal(s.playerHand.length, 3);
-  assert.equal(s.gptHand.length, 3);
+  assert.equal(s.aiHand.length, 3);
   assert.ok(s.trumpCard);
   assert.equal(s.trumpSuit, s.trumpCard.suit);
   assert.equal(s.trumpTaken, false);
@@ -127,10 +127,10 @@ test('createGame: unknown difficulty defaults to normal', () => {
 test('toSnapshot: hides private fields, exposes only counts', () => {
   const s = createGame('normal', 'g2');
   const snap = toSnapshot(s);
-  for (const leaked of ['gptHand', 'deck', 'allPlayedCards', 'playerVoidSuits']) {
+  for (const leaked of ['aiHand', 'deck', 'allPlayedCards', 'playerVoidSuits']) {
     assert.ok(!(leaked in snap), `snapshot must not contain ${leaked}`);
   }
-  assert.equal(snap.gptHandCount, 3);
+  assert.equal(snap.aiHandCount, 3);
   assert.equal(snap.deckCount, 33);
   assert.equal(snap.gameOver, null);
   assert.equal(snap.playerHand.length, 3);
@@ -139,13 +139,13 @@ test('toSnapshot: hides private fields, exposes only counts', () => {
 // ------------------------------------------------------------------
 // void inference flows through applyPlayerMove (GOTCHA #2)
 // ------------------------------------------------------------------
-test('applyPlayerMove: records player void when they fail to follow the GPT lead', () => {
+test('applyPlayerMove: records player void when they fail to follow the AI lead', () => {
   const s = createGame('normal', 'v');
   s.playerLeads = false;
-  s.currentGptCard = C(7);
+  s.currentAiCard = C(7);
   s.trumpSuit = 'Oros';
   s.playerHand = [E(5), { suit: 'Bastos', value: 6 }]; // no Copas → will break suit
-  s.gptHand = [O(2), C(1)];
+  s.aiHand = [O(2), C(1)];
   s.deck = [];
   applyPlayerMove(s, 0); // plays Espadas, not Copas
   assert.ok(s.playerVoidSuits.includes('Copas'));
@@ -160,9 +160,9 @@ function playGame(difficulty, seed) {
     const transcript = [];
     while (s.gameActive) {
       const out = applyPlayerMove(s, 0); // human policy: always play first card
-      transcript.push(`${out.playerCard.suit[0]}${out.playerCard.value}-${out.gptCard.suit[0]}${out.gptCard.value}:${out.winner[0]}`);
+      transcript.push(`${out.playerCard.suit[0]}${out.playerCard.value}-${out.aiCard.suit[0]}${out.aiCard.value}:${out.winner[0]}`);
     }
-    return { p: s.playerPoints, g: s.gptPoints, tricks: transcript.length, line: `${s.playerPoints}-${s.gptPoints}|${transcript.join(',')}` };
+    return { p: s.playerPoints, g: s.aiPoints, tricks: transcript.length, line: `${s.playerPoints}-${s.aiPoints}|${transcript.join(',')}` };
   });
 }
 
@@ -183,11 +183,11 @@ test('full game is reproducible under a fixed seed', () => {
 // Golden-master regression anchors: locks in the CURRENT ported behavior so the
 // upcoming Fisher-Yates shuffle change (or any future refactor) is caught.
 test('golden master: hard seed=42 transcript is stable', () => {
-  const GOLDEN = '39-81|O11-O6:p,B4-E7:p,C7-C11:g,B2-E2:p,B12-E4:p,E12-E11:p,E5-O5:p,C12-O2:p,C3-C4:p,O4-O10:g,C1-E6:g,E3-C6:g,O12-E10:g,C5-O3:g,C2-B11:g,B5-O7:p,C10-B6:g,E1-B3:g,B10-B1:g,B7-O1:p';
+  const GOLDEN = '39-81|O11-O6:p,B4-E7:p,C7-C11:a,B2-E2:p,B12-E4:p,E12-E11:p,E5-O5:p,C12-O2:p,C3-C4:p,O4-O10:a,C1-E6:a,E3-C6:a,O12-E10:a,C5-O3:a,C2-B11:a,B5-O7:p,C10-B6:a,E1-B3:a,B10-B1:a,B7-O1:p';
   assert.equal(playGame('hard', 42).line, GOLDEN);
 });
 
 test('golden master: normal seed=7 transcript is stable', () => {
-  const GOLDEN = '21-99|B4-E4:g,E6-E1:g,E11-E12:g,C4-C3:g,E7-B1:p,C10-E2:g,C2-O12:g,O4-C5:g,B2-O6:g,B12-E10:g,O10-E5:g,B6-B3:g,O11-O3:g,B5-O2:g,B10-C12:g,O7-C7:g,C11-O1:g,B11-C6:g,C1-O5:g,E3-B7:p';
+  const GOLDEN = '21-99|B4-E4:a,E6-E1:a,E11-E12:a,C4-C3:a,E7-B1:p,C10-E2:a,C2-O12:a,O4-C5:a,B2-O6:a,B12-E10:a,O10-E5:a,B6-B3:a,O11-O3:a,B5-O2:a,B10-C12:a,O7-C7:a,C11-O1:a,B11-C6:a,C1-O5:a,E3-B7:p';
   assert.equal(playGame('normal', 7).line, GOLDEN);
 });

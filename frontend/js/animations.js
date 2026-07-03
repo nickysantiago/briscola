@@ -8,8 +8,8 @@
 // game looks and feels identical to the pre-migration build.
 //
 // There are two timing "chains", exactly as before:
-//   - humanLed: player card flies in, pause, GPT response flies in, pause, resolve.
-//   - human responds: the GPT card is already on the field; the player's card flies
+//   - humanLed: player card flies in, pause, AI response flies in, pause, resolve.
+//   - human responds: the AI card is already on the field; the player's card flies
 //     in next to it, pause, resolve. (~1s shorter — matches the original.)
 
 import { CARD_ANIMATION_DELAY } from './constants.js';
@@ -17,8 +17,8 @@ import { clientState } from './client-state.js';
 import {
   createPlayField,
   addPlayerCardToPlayField,
-  addGptCardToPlayField,
-  createGptPlayField,
+  addAiCardToPlayField,
+  createAiPlayField,
   showPointsAnimation,
   renderGame,
   renderGameOver
@@ -63,18 +63,18 @@ function flyPlayerCard(playerCard, index, trumpSuit) {
   });
 }
 
-// Fly the GPT card in when it is RESPONDING to the human's lead (enters from the
-// right). Ported from ai-player.js makeGptPlay() respond branch.
-function flyGptResponse(gptCard, trumpSuit) {
+// Fly the AI card in when it is RESPONDING to the human's lead (enters from the
+// right). Ported from ai-player.js makeAiPlay() respond branch.
+function flyAiResponse(aiCard, trumpSuit) {
   return new Promise((resolve) => {
     const cardElement = document.createElement('div');
-    cardElement.className = `card ${gptCard.suit === trumpSuit ? 'trump' : ''}`;
-    cardElement.style.backgroundImage = `url('${cardImg(gptCard)}')`;
+    cardElement.className = `card ${aiCard.suit === trumpSuit ? 'trump' : ''}`;
+    cardElement.style.backgroundImage = `url('${cardImg(aiCard)}')`;
     cardElement.style.position = 'fixed';
     cardElement.style.top = '50px';
     cardElement.style.right = '25%';
     cardElement.style.zIndex = '100';
-    cardElement.innerHTML = `${gptCard.value} of ${gptCard.suit}`;
+    cardElement.innerHTML = `${aiCard.value} of ${aiCard.suit}`;
     document.body.appendChild(cardElement);
 
     const playArea = document.getElementById('play-area');
@@ -86,26 +86,26 @@ function flyGptResponse(gptCard, trumpSuit) {
       cardElement.style.right = `${window.innerWidth - rect.right + 20}px`;
       setTimeout(() => {
         document.body.removeChild(cardElement);
-        addGptCardToPlayField(gptCard);
+        addAiCardToPlayField(aiCard);
         resolve();
       }, 500);
     }, 10);
   });
 }
 
-// Fly the GPT card in when it is LEADING a new trick (enters from the top center).
-// Ported from ai-player.js makeGptPlay() lead branch.
-function flyGptLead(gptCard, trumpSuit) {
+// Fly the AI card in when it is LEADING a new trick (enters from the top center).
+// Ported from ai-player.js makeAiPlay() lead branch.
+function flyAiLead(aiCard, trumpSuit) {
   return new Promise((resolve) => {
     const cardElement = document.createElement('div');
-    cardElement.className = `card ${gptCard.suit === trumpSuit ? 'trump' : ''}`;
-    cardElement.style.backgroundImage = `url('${cardImg(gptCard)}')`;
+    cardElement.className = `card ${aiCard.suit === trumpSuit ? 'trump' : ''}`;
+    cardElement.style.backgroundImage = `url('${cardImg(aiCard)}')`;
     cardElement.style.position = 'fixed';
     cardElement.style.top = '50px';
     cardElement.style.left = '50%';
     cardElement.style.transform = 'translateX(-50%)';
     cardElement.style.zIndex = '100';
-    cardElement.innerHTML = `${gptCard.value} of ${gptCard.suit}`;
+    cardElement.innerHTML = `${aiCard.value} of ${aiCard.suit}`;
     document.body.appendChild(cardElement);
 
     const playArea = document.getElementById('play-area');
@@ -115,7 +115,7 @@ function flyGptLead(gptCard, trumpSuit) {
       cardElement.style.top = `${playAreaRect.top + 50}px`;
       setTimeout(() => {
         document.body.removeChild(cardElement);
-        createGptPlayField(gptCard);
+        createAiPlayField(aiCard);
         resolve();
       }, 500);
     }, 10);
@@ -135,10 +135,10 @@ function animateCardsToWinner(winner, trickPoints) {
     statusMessage.className = 'status highlight';
     statusMessage.textContent = winner === 'player'
       ? `You win ${trickPoints} points!`
-      : `GPT wins ${trickPoints} points`;
+      : `AI wins ${trickPoints} points`;
     playField.appendChild(statusMessage);
 
-    const targetPileId = winner === 'player' ? 'player-pile' : 'gpt-pile';
+    const targetPileId = winner === 'player' ? 'player-pile' : 'ai-pile';
     const targetPile = document.getElementById(targetPileId);
     let targetRect = { top: 0, left: 0 };
     if (targetPile) {
@@ -192,19 +192,19 @@ function animateCardsToWinner(winner, trickPoints) {
 // card has flown in). The caller clears its `busy` flag on resolution.
 async function playTrickAnimation(outcome, ctx) {
   const trumpSuit = clientState.trumpCard ? clientState.trumpCard.suit : null;
-  const { playerCard, gptCard, winner, trickPoints, humanLed, gptLead, gameOver } = outcome;
+  const { playerCard, aiCard, winner, trickPoints, humanLed, aiLead, gameOver } = outcome;
 
   // 1. Player's card flies to the play area.
   await flyPlayerCard(playerCard, ctx.clickedIndex, trumpSuit);
 
   // 2. Get both cards onto the field. The two chains mirror the original exactly:
-  //    when the human led, the GPT response flies in after CARD_ANIMATION_DELAY and
-  //    runs concurrently with the resolve delay below (fire-and-forget, as makeGptPlay
-  //    did). When the human responded, the GPT card is already on the field.
+  //    when the human led, the AI response flies in after CARD_ANIMATION_DELAY and
+  //    runs concurrently with the resolve delay below (fire-and-forget, as makeAiPlay
+  //    did). When the human responded, the AI card is already on the field.
   if (humanLed) {
     createPlayField(playerCard);
     await delay(CARD_ANIMATION_DELAY);
-    flyGptResponse(gptCard, trumpSuit).catch(() => {});
+    flyAiResponse(aiCard, trumpSuit).catch(() => {});
   } else {
     addPlayerCardToPlayField(playerCard);
   }
@@ -223,10 +223,10 @@ async function playTrickAnimation(outcome, ctx) {
   renderGame(); // reads the already-applied settled snapshot from clientState
 
   // 5. If the AI won, it leads the next trick — fly its lead card in (mirrors the
-  //    old renderGame-triggered makeGptPlay lead), then the human can respond.
-  if (gptLead) {
+  //    old renderGame-triggered makeAiPlay lead), then the human can respond.
+  if (aiLead) {
     await delay(CARD_ANIMATION_DELAY);
-    await flyGptLead(gptLead.card, trumpSuit);
+    await flyAiLead(aiLead.card, trumpSuit);
   }
 }
 

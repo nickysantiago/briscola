@@ -63,9 +63,9 @@ async function main() {
   let snap = await newGame(s, 'hard');
   assert.equal(snap.seq, 0, 'fresh game seq=0');
   assert.equal(snap.playerLeads, true, 'human leads first');
-  assert.equal(snap.gptHandCount, 3);
+  assert.equal(snap.aiHandCount, 3);
   assert.equal(snap.deckCount, 33);
-  assert.ok(!('gptHand' in snap) && !('deck' in snap), 'no private leakage');
+  assert.ok(!('aiHand' in snap) && !('deck' in snap), 'no private leakage');
   const gameId = snap.gameId;
   console.log('newGame OK  gameId=%s trump=%s%d', gameId, snap.trumpCard.suit, snap.trumpCard.value);
 
@@ -77,14 +77,14 @@ async function main() {
     snap = state;
   }
   const mid = snap;
-  console.log('played 3 tricks OK  seq=%d score %d-%d', mid.seq, mid.playerPoints, mid.gptPoints);
+  console.log('played 3 tricks OK  seq=%d score %d-%d', mid.seq, mid.playerPoints, mid.aiPoints);
 
   // 3. Resume on a brand-new connection — must match the persisted state.
   const s2 = await connect();
   const resumed = await resume(s2, gameId);
   assert.equal(resumed.seq, mid.seq, 'resume seq matches');
   assert.equal(resumed.playerPoints, mid.playerPoints, 'resume player score matches');
-  assert.equal(resumed.gptPoints, mid.gptPoints, 'resume gpt score matches');
+  assert.equal(resumed.aiPoints, mid.aiPoints, 'resume AI score matches');
   assert.equal(resumed.deckCount, mid.deckCount, 'resume deck count matches');
   assert.equal(JSON.stringify(resumed.playerHand), JSON.stringify(mid.playerHand), 'resume hand matches');
   console.log('resume OK  (state survived a fresh connection)');
@@ -106,9 +106,9 @@ async function main() {
     cur = state;
   }
   assert.equal(cur.gameActive, false, 'game inactive at end');
-  assert.equal(cur.playerPoints + cur.gptPoints, 120, 'points sum to 120');
-  assert.ok(['player', 'gpt', 'tie'].includes(cur.gameOver.winner));
-  console.log('full game OK  winner=%s  %d-%d', cur.gameOver.winner, cur.playerPoints, cur.gptPoints);
+  assert.equal(cur.playerPoints + cur.aiPoints, 120, 'points sum to 120');
+  assert.ok(['player', 'ai', 'tie'].includes(cur.gameOver.winner));
+  console.log('full game OK  winner=%s  %d-%d', cur.gameOver.winner, cur.playerPoints, cur.aiPoints);
 
   // 6. Playing after game over is rejected.
   await assert.rejects(

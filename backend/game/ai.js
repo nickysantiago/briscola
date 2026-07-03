@@ -1,10 +1,10 @@
-// ai.js - GPT/AI player logic, server-side.
+// ai.js - AI opponent logic, server-side.
 //
 // Ported from the original client-side js/ai-player.js. The strategy functions are
 // reproduced verbatim (easy/normal/hard, including the hand-tuned hard mode and the
 // perfect-information endgame minimax) with two mechanical changes only:
 //   1. module-level state imports become reads off the passed-in `state` object;
-//   2. all DOM/animation code from makeGptPlay is removed (that lives on the client).
+//   2. all DOM/animation code from makeAiPlay is removed (that lives on the client).
 // Suit comparisons use state.trumpSuit (never state.trumpCard.suit) — GOTCHA #1.
 
 import { VALUE_POINTS, SUITS } from './constants.js';
@@ -16,9 +16,9 @@ import { getCardRank } from './engine.js';
 
 // Pick the AI's card and remove it from its hand. `playerCard` is the human's lead
 // when the AI is responding, or null when the AI is leading. Equivalent to the
-// original makeGptPlay minus the animation.
-function chooseGptCard(state, playerCard = null) {
-  if (state.gptHand.length === 0) return null;
+// original makeAiPlay minus the animation.
+function chooseAiCard(state, playerCard = null) {
+  if (state.aiHand.length === 0) return null;
 
   let idx;
   switch (state.difficulty) {
@@ -35,36 +35,36 @@ function chooseGptCard(state, playerCard = null) {
       idx = playNormalMode(state, playerCard);
   }
 
-  return state.gptHand.splice(idx, 1)[0];
+  return state.aiHand.splice(idx, 1)[0];
 }
 
 // The AI leads a new trick (no card to respond to).
 function leadForAi(state) {
-  return chooseGptCard(state, null);
+  return chooseAiCard(state, null);
 }
 
 // ------------------------------------------------------------------
 // Easy Mode - random
 // ------------------------------------------------------------------
 function playEasyMode(state, playerCard = null) {
-  return Math.floor(Math.random() * state.gptHand.length);
+  return Math.floor(Math.random() * state.aiHand.length);
 }
 
 // ------------------------------------------------------------------
 // Normal Mode - strategic but not optimal
 // ------------------------------------------------------------------
 function playNormalMode(state, playerCard = null) {
-  const gptHand = state.gptHand;
+  const aiHand = state.aiHand;
   const trumpSuit = state.trumpSuit;
-  let gptCardIndex;
+  let aiCardIndex;
 
   if (!state.playerLeads) {
-    // GPT leads - plays a random card
-    gptCardIndex = Math.floor(Math.random() * gptHand.length);
+    // AI leads - plays a random card
+    aiCardIndex = Math.floor(Math.random() * aiHand.length);
   } else {
-    // GPT responds to player's lead
-    const trumpsInHand = gptHand.filter(c => c.suit === trumpSuit);
-    const sameSuitCards = gptHand.filter(c => c.suit === playerCard.suit);
+    // AI responds to player's lead
+    const trumpsInHand = aiHand.filter(c => c.suit === trumpSuit);
+    const sameSuitCards = aiHand.filter(c => c.suit === playerCard.suit);
 
     if (playerCard.suit === trumpSuit && sameSuitCards.length > 0) {
       // Player played trump, try to win with higher trump or lose with lowest
@@ -72,41 +72,41 @@ function playNormalMode(state, playerCard = null) {
       if (winningTrumps.length > 0) {
         const lowestWinner = winningTrumps.reduce((lowest, current) =>
           getCardRank(current) < getCardRank(lowest) ? current : lowest, winningTrumps[0]);
-        gptCardIndex = gptHand.indexOf(lowestWinner);
+        aiCardIndex = aiHand.indexOf(lowestWinner);
       } else {
         const lowestCard = sameSuitCards.reduce((lowest, current) =>
           getCardRank(current) < getCardRank(lowest) ? current : lowest, sameSuitCards[0]);
-        gptCardIndex = gptHand.indexOf(lowestCard);
+        aiCardIndex = aiHand.indexOf(lowestCard);
       }
     } else if (playerCard.suit !== trumpSuit && trumpsInHand.length > 0) {
-      // Player didn't play trump, GPT can win with any trump
+      // Player didn't play trump, AI can win with any trump
       const lowestTrump = trumpsInHand.reduce((lowest, current) =>
         getCardRank(current) < getCardRank(lowest) ? current : lowest, trumpsInHand[0]);
-      gptCardIndex = gptHand.indexOf(lowestTrump);
+      aiCardIndex = aiHand.indexOf(lowestTrump);
     } else if (sameSuitCards.length > 0) {
       // Try to win with same suit
       const winningCards = sameSuitCards.filter(c => getCardRank(c) > getCardRank(playerCard));
       if (winningCards.length > 0) {
         const lowestWinner = winningCards.reduce((lowest, current) =>
           getCardRank(current) < getCardRank(lowest) ? current : lowest, winningCards[0]);
-        gptCardIndex = gptHand.indexOf(lowestWinner);
+        aiCardIndex = aiHand.indexOf(lowestWinner);
       } else {
         const lowestCard = sameSuitCards.reduce((lowest, current) =>
           getCardRank(current) < getCardRank(lowest) ? current : lowest, sameSuitCards[0]);
-        gptCardIndex = gptHand.indexOf(lowestCard);
+        aiCardIndex = aiHand.indexOf(lowestCard);
       }
     } else {
       // Can't win, throw lowest value card
-      const lowestValueCard = gptHand.reduce((lowest, current) => {
+      const lowestValueCard = aiHand.reduce((lowest, current) => {
         const currentPoints = VALUE_POINTS[current.value] || 0;
         const lowestPoints = VALUE_POINTS[lowest.value] || 0;
         return currentPoints < lowestPoints ? current : lowest;
-      }, gptHand[0]);
-      gptCardIndex = gptHand.indexOf(lowestValueCard);
+      }, aiHand[0]);
+      aiCardIndex = aiHand.indexOf(lowestValueCard);
     }
   }
 
-  return gptCardIndex;
+  return aiCardIndex;
 }
 
 // ============================================================
@@ -118,7 +118,7 @@ function cardEq(a, b) {
   return !!a && !!b && a.suit === b.suit && a.value === b.value;
 }
 
-// Build the set of cards GPT has not seen (not in its hand, not played).
+// Build the set of cards AI has not seen (not in its hand, not played).
 function computeUnseen(state) {
   const full = [];
   for (const suit of SUITS) {
@@ -127,18 +127,18 @@ function computeUnseen(state) {
     }
   }
   return full.filter(c =>
-    !state.gptHand.some(h => cardEq(h, c)) &&
+    !state.aiHand.some(h => cardEq(h, c)) &&
     !state.allPlayedCards.some(p => cardEq(p, c))
   );
 }
 
 function playHardMode(state, playerCard = null) {
-  const gptHand = state.gptHand;
+  const aiHand = state.aiHand;
   const trumpSuit = state.trumpSuit;
   const unseen = computeUnseen(state);
-  const trumpsInHand = gptHand.filter(c => c.suit === trumpSuit);
+  const trumpsInHand = aiHand.filter(c => c.suit === trumpSuit);
   const gamePhase = state.deck.length > 15 ? 'early' : state.deck.length > 6 ? 'mid' : 'late';
-  const scoreDiff = state.gptPoints - state.playerPoints;
+  const scoreDiff = state.aiPoints - state.playerPoints;
 
   // ------------------------------------------------------------
   // PERFECT ENDGAME: deck empty + <=3 cards each.
@@ -153,40 +153,40 @@ function playHardMode(state, playerCard = null) {
   // ================== LEADING ==================
   if (!state.playerLeads) {
     // 1. Cash a guaranteed winner.
-    for (const c of gptHand) {
+    for (const c of aiHand) {
       if (c.suit === trumpSuit) continue;
       if (state.playerVoidSuits.includes(c.suit)) continue; // they'll trump or dump
       const higherUnseen = unseen.some(u =>
         u.suit === c.suit && getCardRank(u) > getCardRank(c)
       );
       if (!higherUnseen && (VALUE_POINTS[c.value] || 0) >= 3) {
-        return gptHand.indexOf(c);
+        return aiHand.indexOf(c);
       }
     }
 
     // 2. If player is out of trumps entirely, cash our highest point non-trump.
     const playerTrumpsRemaining = unseen.filter(u => u.suit === trumpSuit).length;
     if (playerTrumpsRemaining === 0) {
-      const best = gptHand
+      const best = aiHand
         .filter(c => c.suit !== trumpSuit)
         .sort((a, b) => (VALUE_POINTS[b.value] || 0) - (VALUE_POINTS[a.value] || 0))[0];
-      if (best && (VALUE_POINTS[best.value] || 0) > 0) return gptHand.indexOf(best);
+      if (best && (VALUE_POINTS[best.value] || 0) > 0) return aiHand.indexOf(best);
     }
 
     // 3. Bait the player into committing trumps.
     if (gamePhase === 'mid' && scoreDiff < 15 && trumpsInHand.some(t => t.value === 1 || t.value === 3)) {
-      const bait = gptHand
+      const bait = aiHand
         .filter(c => c.suit !== trumpSuit && !state.playerVoidSuits.includes(c.suit))
         .filter(c => {
           const pts = VALUE_POINTS[c.value] || 0;
           return pts >= 2 && pts <= 4; // Jacks/Kings
         })
         .sort((a, b) => (VALUE_POINTS[a.value] || 0) - (VALUE_POINTS[b.value] || 0))[0];
-      if (bait) return gptHand.indexOf(bait);
+      if (bait) return aiHand.indexOf(bait);
     }
 
     // 4. Lead a low zero-point card, preferring suits the player is void in.
-    const zeroPointLeads = gptHand
+    const zeroPointLeads = aiHand
       .filter(c => c.suit !== trumpSuit && (VALUE_POINTS[c.value] || 0) === 0)
       .sort((a, b) => {
         const aVoid = state.playerVoidSuits.includes(a.suit) ? 1 : 0;
@@ -194,20 +194,20 @@ function playHardMode(state, playerCard = null) {
         if (aVoid !== bVoid) return bVoid - aVoid;
         return getCardRank(a) - getCardRank(b);
       });
-    if (zeroPointLeads.length > 0) return gptHand.indexOf(zeroPointLeads[0]);
+    if (zeroPointLeads.length > 0) return aiHand.indexOf(zeroPointLeads[0]);
 
     // 5. Fallback: lowest-value, lowest-rank non-trump (avoid leading trump).
-    const nonTrump = gptHand.filter(c => c.suit !== trumpSuit);
-    const pool = nonTrump.length > 0 ? nonTrump : gptHand;
+    const nonTrump = aiHand.filter(c => c.suit !== trumpSuit);
+    const pool = nonTrump.length > 0 ? nonTrump : aiHand;
     const fallback = [...pool].sort((a, b) => {
       const d = (VALUE_POINTS[a.value] || 0) - (VALUE_POINTS[b.value] || 0);
       return d !== 0 ? d : getCardRank(a) - getCardRank(b);
     })[0];
-    return gptHand.indexOf(fallback);
+    return aiHand.indexOf(fallback);
   }
 
   // ================== FOLLOWING ==================
-  const sameSuit = gptHand.filter(c => c.suit === playerCard.suit);
+  const sameSuit = aiHand.filter(c => c.suit === playerCard.suit);
   const playerPts = VALUE_POINTS[playerCard.value] || 0;
 
   // Helper: lowest card that beats `beat` from a set, or null.
@@ -223,7 +223,7 @@ function playHardMode(state, playerCard = null) {
     if (w) {
       const wRank = getCardRank(w);
       if (playerPts > 0 || wRank <= 3 || scoreDiff < -5) {
-        return gptHand.indexOf(w);
+        return aiHand.indexOf(w);
       }
     }
     return indexOfCheapestDiscard(state);
@@ -236,7 +236,7 @@ function playHardMode(state, playerCard = null) {
     if (w) {
       const wRank = getCardRank(w);
       if (playerPts > 0 || wRank <= 2 || scoreDiff < -5) {
-        return gptHand.indexOf(w);
+        return aiHand.indexOf(w);
       }
     }
   }
@@ -254,7 +254,7 @@ function playHardMode(state, playerCard = null) {
       (playerPts === 0 && gamePhase === 'late' && trumpsInHand.length >= 2 && lowTrumpRank <= 3);
 
     if (shouldTrump) {
-      return gptHand.indexOf(lowestTrump);
+      return aiHand.indexOf(lowestTrump);
     }
   }
 
@@ -266,7 +266,7 @@ function playHardMode(state, playerCard = null) {
       if (cp !== lp) return cp < lp ? c : lo;
       return getCardRank(c) < getCardRank(lo) ? c : lo;
     });
-    return gptHand.indexOf(cheapest);
+    return aiHand.indexOf(cheapest);
   }
 
   return indexOfCheapestDiscard(state);
@@ -274,12 +274,12 @@ function playHardMode(state, playerCard = null) {
 
 // Dump cheapest card, preferring suits the player is void in and avoiding trump Ace/Three.
 function indexOfCheapestDiscard(state) {
-  const gptHand = state.gptHand;
+  const aiHand = state.aiHand;
   const trumpSuit = state.trumpSuit;
-  const candidates = gptHand.filter(c =>
+  const candidates = aiHand.filter(c =>
     !(c.suit === trumpSuit && (c.value === 1 || c.value === 3))
   );
-  const pool = candidates.length > 0 ? candidates : gptHand;
+  const pool = candidates.length > 0 ? candidates : aiHand;
   const sorted = [...pool].sort((a, b) => {
     const va = VALUE_POINTS[a.value] || 0;
     const vb = VALUE_POINTS[b.value] || 0;
@@ -292,38 +292,38 @@ function indexOfCheapestDiscard(state) {
     if (aTrump !== bTrump) return aTrump - bTrump;
     return getCardRank(a) - getCardRank(b);
   });
-  return gptHand.indexOf(sorted[0]);
+  return aiHand.indexOf(sorted[0]);
 }
 
 // ============================================================
 // ENDGAME MINIMAX
 // Called only when deck is empty and playerKnownHand.length <= 3.
-// Objective: maximize (final GPT points - final player points).
-// Returns the index in state.gptHand of the optimal play.
+// Objective: maximize (final AI points - final player points).
+// Returns the index in state.aiHand of the optimal play.
 // ============================================================
 function solveEndgame(state, playerCard, playerKnownHand) {
   const trumpSuit = state.trumpSuit;
-  const gptHand = state.gptHand;
+  const aiHand = state.aiHand;
 
   function resolveTrick(pCard, gCard, leader) {
     const leadSuit = leader === 'player' ? pCard.suit : gCard.suit;
     const pTrump = pCard.suit === trumpSuit;
     const gTrump = gCard.suit === trumpSuit;
     if (pTrump && gTrump) {
-      return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'gpt';
+      return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'ai';
     }
     if (pTrump) return 'player';
-    if (gTrump) return 'gpt';
+    if (gTrump) return 'ai';
     if (leader === 'player') {
       if (gCard.suit === leadSuit) {
-        return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'gpt';
+        return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'ai';
       }
       return 'player';
     } else {
       if (pCard.suit === leadSuit) {
-        return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'gpt';
+        return getCardRank(pCard) > getCardRank(gCard) ? 'player' : 'ai';
       }
-      return 'gpt';
+      return 'ai';
     }
   }
 
@@ -331,30 +331,30 @@ function solveEndgame(state, playerCard, playerKnownHand) {
     if (!pending && gHand.length === 0 && pHand.length === 0) return 0;
 
     if (!pending) {
-      if (leads === 'gpt') {
+      if (leads === 'ai') {
         let best = -Infinity;
         for (const c of gHand) {
-          const v = search(gHand.filter(x => x !== c), pHand, 'player', { card: c, leader: 'gpt' });
+          const v = search(gHand.filter(x => x !== c), pHand, 'player', { card: c, leader: 'ai' });
           if (v > best) best = v;
         }
         return best;
       } else {
         let worst = Infinity;
         for (const c of pHand) {
-          const v = search(gHand, pHand.filter(x => x !== c), 'gpt', { card: c, leader: 'player' });
+          const v = search(gHand, pHand.filter(x => x !== c), 'ai', { card: c, leader: 'player' });
           if (v < worst) worst = v;
         }
         return worst;
       }
     }
 
-    const responder = pending.leader === 'gpt' ? 'player' : 'gpt';
-    if (responder === 'gpt') {
+    const responder = pending.leader === 'ai' ? 'player' : 'ai';
+    if (responder === 'ai') {
       let best = -Infinity;
       for (const c of gHand) {
         const winner = resolveTrick(pending.card, c, pending.leader);
         const pts = (VALUE_POINTS[pending.card.value] || 0) + (VALUE_POINTS[c.value] || 0);
-        const delta = winner === 'gpt' ? pts : -pts;
+        const delta = winner === 'ai' ? pts : -pts;
         const v = delta + search(gHand.filter(x => x !== c), pHand, winner, null);
         if (v > best) best = v;
       }
@@ -364,7 +364,7 @@ function solveEndgame(state, playerCard, playerKnownHand) {
       for (const c of pHand) {
         const winner = resolveTrick(c, pending.card, pending.leader);
         const pts = (VALUE_POINTS[pending.card.value] || 0) + (VALUE_POINTS[c.value] || 0);
-        const delta = winner === 'gpt' ? pts : -pts;
+        const delta = winner === 'ai' ? pts : -pts;
         const v = delta + search(gHand, pHand.filter(x => x !== c), winner, null);
         if (v < worst) worst = v;
       }
@@ -373,26 +373,26 @@ function solveEndgame(state, playerCard, playerKnownHand) {
   }
 
   if (playerCard) {
-    // GPT is responding to player's lead.
+    // AI is responding to player's lead.
     const pHandRemaining = playerKnownHand.filter(x => !cardEq(x, playerCard));
     let best = -Infinity;
     let bestIdx = 0;
-    for (let i = 0; i < gptHand.length; i++) {
-      const c = gptHand[i];
+    for (let i = 0; i < aiHand.length; i++) {
+      const c = aiHand[i];
       const winner = resolveTrick(playerCard, c, 'player');
       const pts = (VALUE_POINTS[playerCard.value] || 0) + (VALUE_POINTS[c.value] || 0);
-      const delta = winner === 'gpt' ? pts : -pts;
-      const v = delta + search(gptHand.filter((_, j) => j !== i), pHandRemaining, winner, null);
+      const delta = winner === 'ai' ? pts : -pts;
+      const v = delta + search(aiHand.filter((_, j) => j !== i), pHandRemaining, winner, null);
       if (v > best) { best = v; bestIdx = i; }
     }
     return bestIdx;
   } else {
-    // GPT is leading.
+    // AI is leading.
     let best = -Infinity;
     let bestIdx = 0;
-    for (let i = 0; i < gptHand.length; i++) {
-      const c = gptHand[i];
-      const v = search(gptHand.filter((_, j) => j !== i), playerKnownHand, 'player', { card: c, leader: 'gpt' });
+    for (let i = 0; i < aiHand.length; i++) {
+      const c = aiHand[i];
+      const v = search(aiHand.filter((_, j) => j !== i), playerKnownHand, 'player', { card: c, leader: 'ai' });
       if (v > best) { best = v; bestIdx = i; }
     }
     return bestIdx;
@@ -400,7 +400,7 @@ function solveEndgame(state, playerCard, playerKnownHand) {
 }
 
 export {
-  chooseGptCard,
+  chooseAiCard,
   leadForAi,
   playEasyMode,
   playNormalMode,

@@ -62,7 +62,7 @@
 
 /* Winner pile animation entry points */
 .winner-pile-player,
-.winner-pile-gpt {
+.winner-pile-ai {
   position: fixed;
   width: 80px;
   height: 120px;
@@ -81,14 +81,14 @@
   right: 5vw;
 }
 
-.winner-pile-gpt {
+.winner-pile-ai {
   top: 15vh; /* Move down from 5vh to 15vh to avoid overlap with game info */
   right: 5vw;
 }
 
 /* Add labels to the piles */
 .winner-pile-player::before,
-.winner-pile-gpt::before {
+.winner-pile-ai::before {
   content: attr(data-label);
   position: absolute;
   font-size: 0.8rem;
@@ -104,8 +104,8 @@
   right: 0;
 }
 
-.winner-pile-gpt::before {
-  content: "GPT's Cards";
+.winner-pile-ai::before {
+  content: "AI's Cards";
   bottom: -20px;
   right: 0;
 }
@@ -119,7 +119,7 @@
 
 /* Add subtle shadow to show stacking */
 .winner-pile-player .won-card,
-.winner-pile-gpt .won-card {
+.winner-pile-ai .won-card {
   box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
 }
 
@@ -182,7 +182,7 @@
   animation: pulseGreen 2s infinite;
 }
 
-.turn-indicator.gpt-turn {
+.turn-indicator.ai-turn {
   background-color: rgba(33, 150, 243, 0.8);
   animation: pulseBlue 2s infinite;
 }

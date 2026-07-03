@@ -5,7 +5,7 @@
 
 import { socket, emitNewGame, emitPlayCard, emitResume } from './net.js';
 import { clientState, applySnapshot, getStoredGameId, clearStoredGameId } from './client-state.js';
-import { renderGame, renderGameOver, createGptPlayField } from './ui-renderer.js';
+import { renderGame, renderGameOver, createAiPlayField } from './ui-renderer.js';
 import { playTrickAnimation } from './animations.js';
 
 // UX lock (the former isProcessingTrick): blocks clicks while a trick animates.
@@ -19,7 +19,7 @@ window.playCard = (index) => {
   if (busy) return;
   if (!clientState.gameActive) return;
   // The human may act when they lead, or when the AI has led and awaits a response.
-  if (!clientState.playerLeads && !clientState.currentGptCard) return;
+  if (!clientState.playerLeads && !clientState.currentAiCard) return;
   busy = true;
   lastIndex = index;
   emitPlayCard(clientState.gameId, index, clientState.seq);
@@ -38,8 +38,8 @@ function renderFromSnapshot() {
   renderGame();
   // If the AI has already led and is waiting on the human, show its card in place
   // (no flight — that already happened before the refresh).
-  if (clientState.currentGptCard) {
-    createGptPlayField(clientState.currentGptCard);
+  if (clientState.currentAiCard) {
+    createAiPlayField(clientState.currentAiCard);
   }
 }
 
