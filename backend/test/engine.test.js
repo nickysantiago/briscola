@@ -184,7 +184,8 @@ test('full game is reproducible under a fixed seed', () => {
 // any refactor that unintentionally changes game flow is caught. Regenerate the
 // transcripts deliberately when behavior is meant to change.
 test('golden master: hard seed=42 transcript is stable', () => {
-  const GOLDEN = '59-61|E5-C10:p,B3-B12:p,O7-O10:a,E1-E6:p,C5-C11:a,B10-E10:a,O11-B1:p,C7-C3:a,O1-E2:p,B4-E4:p,C1-O5:a,B5-B11:a,C12-E3:a,B6-E12:a,O2-E11:p,O4-O6:a,B2-B7:a,C4-O3:a,C2-E7:a,O12-C6:p';
+  // Regenerated for the determinized-search hard mode (2026-07).
+  const GOLDEN = '49-71|E5-C10:p,B3-E10:p,O7-C11:p,E1-O10:a,C5-B10:a,E6-B12:a,O6-B1:p,C7-C3:a,O1-E2:p,B4-E4:p,C1-O5:a,B5-O3:a,C12-B11:a,B6-E12:a,O2-E3:p,O4-B7:p,B2-C2:p,C4-O11:a,E7-E11:a,C6-O12:a';
   assert.equal(playGame('hard', 42).line, GOLDEN);
 });
 
