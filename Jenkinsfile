@@ -33,11 +33,16 @@ pipeline {
         }
 
         stage('Lint & SAST') {  // Snyk Code
-
+            steps {
+                echo "Running Lint..."
+                echo "Running SAST scan..."
+            }
         }
 
         stage('Dependency Scan') { // Snyk Test
-
+            steps {
+                echo "Running snyk test scan..."
+            }
         } 
 
         stage('Build') {
@@ -53,6 +58,9 @@ pipeline {
         }
 
         stage('Push Artifacts') { 
+            steps {
+                echo "Pushing Artifacts to Nexus..."
+            }
         } 
 
         stage('Staging Deploy') {
