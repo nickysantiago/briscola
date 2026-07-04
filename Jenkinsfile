@@ -46,9 +46,9 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Unit Test') {
             steps {
-                echo "Testing..."
+                echo "Running Unit Testing..."
             }
         }
 
