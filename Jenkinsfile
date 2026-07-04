@@ -27,10 +27,18 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
-                echo "Branch : ${env.BRANCH_NAME}"
+                echo "Branch : ${env.BRANCH_NAME}" // This only populates in multi-pipeline Jenkins jobs! In this case it's just null. 
                 echo "Commit : ${env.GIT_COMMIT}"
             }
         }
+
+        stage('Lint & SAST') {  // Snyk Code
+
+        }
+
+        stage('Dependency Scan') { // Snyk Test
+
+        } 
 
         stage('Build') {
             steps {
@@ -44,9 +52,30 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Push Artifacts') { 
+        } 
+
+        stage('Staging Deploy') {
             steps {
-                echo "Deploying..."
+                echo "Deploying to staging..."
+            }
+        }
+
+        stage('Automated Testing') {
+            steps {
+                echo "Running Regression, E2E, and Smoke tests..."
+            }  
+        }    
+
+        stage('Approve Production') {  
+            steps {
+                echo "Awaiting approval for prod..."
+            }
+        }   
+
+        stage('Production Deploy') {  
+            steps {
+                echo "Deploying to production..."
             }
         }
 
