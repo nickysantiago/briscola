@@ -18,27 +18,43 @@ pipeline {
         COMPOSE_DIR = '/home/jenkins/workspace/brisca_home'
     }
 
+    triggers {
+        githubPush()
+    }
+
     stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+                echo "Branch : ${env.BRANCH_NAME}"
+                echo "Commit : ${env.GIT_COMMIT}"
+            }
+        }
+
         stage('Build') {
             steps {
-                sshagent([env.SSH_CRED]) {
-                    sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'cd ${COMPOSE_DIR} && git pull --ff-only && docker-compose build'"
-                }
+                echo "Building..."
             }
         }
+
+        stage('Test') {
+            steps {
+                echo "Testing..."
+            }
+        }
+
         stage('Deploy') {
             steps {
-                sshagent([env.SSH_CRED]) {
-                    sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'cd ${COMPOSE_DIR} && docker-compose up -d'"
-                }
+                echo "Deploying..."
             }
         }
+
         stage('Cleanup') {
             steps {
-                sshagent([env.SSH_CRED]) {
-                    sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'docker image prune -f'"
-                }
+                echo "Cleaning up..."
             }
         }
+
     }
 }
