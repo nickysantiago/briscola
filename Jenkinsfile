@@ -7,7 +7,7 @@
 // them to run the docker-compose commands below, or keep this inlined version.
 // Assumes ${COMPOSE_DIR} on the home server is a git checkout of this repo that
 // contains docker-compose.yml. Uses `docker-compose` (v1) — switch to `docker compose`
-// if the home server has the Compose v2 plugin. 
+// if the home server has the Compose v2 plugin.
 
 pipeline {
     agent any
