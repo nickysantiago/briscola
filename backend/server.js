@@ -24,7 +24,7 @@ const PORT = Number(process.env.PORT) || 3000;
 
 // The human can act whenever it's a valid card index and the game is live. The
 // engine guarantees every persisted state is one the human is allowed to act on
-// (either they lead, or the AI has already led and currentGptCard is set).
+// (either they lead, or the AI has already led and currentAiCard is set).
 function legalTurn(state, index) {
   return Number.isInteger(index) && index >= 0 && index < state.playerHand.length;
 }

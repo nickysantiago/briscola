@@ -33,7 +33,7 @@ if (mode === 'create') {
   snap = await once(s, 'gameState');
 }
 console.log('RESULT ' + JSON.stringify({
-  gameId: snap.gameId, seq: snap.seq, p: snap.playerPoints, g: snap.gptPoints,
+  gameId: snap.gameId, seq: snap.seq, player: snap.playerPoints, ai: snap.aiPoints,
   deck: snap.deckCount, hand: snap.playerHand
 }));
 s.close();

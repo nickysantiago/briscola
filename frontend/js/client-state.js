@@ -1,10 +1,10 @@
 // client-state.js - Client-side mirror of the server's public game snapshot.
 //
-// ui-renderer.js and the animation engine read from this object instead of the
-// former game-state.js. It is replaced wholesale by each `gameState` message and
-// holds only public info (the player's own hand, counts for the hidden deck/GPT
-// hand, the trump, scores, whose turn it is, the last trick, and game-over data).
-// The gameId is persisted to localStorage so a refresh/close can resume the game.
+// ui-renderer.js and the animation engine read from this object. It is replaced
+// wholesale by each `gameState` message and holds only public info (the player's
+// own hand, counts for the hidden deck/AI hand, the trump, scores, whose turn it
+// is, the last trick, and game-over data). The gameId is persisted to
+// localStorage so a refresh/close can resume the game.
 
 const GAME_ID_KEY = 'brisca:gameId';
 

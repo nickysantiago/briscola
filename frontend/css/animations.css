@@ -18,10 +18,9 @@
   }
 }
 
-/* Card transition animations */
+/* Card transition that drives the floating-card flights. */
 .card {
-  /* Add transitions for smoother animations */
-  transition: transform 0.3s ease, top 0.8s ease, left 0.8s ease, position 0.5s ease, opacity 0.5s ease;
+  transition: transform 0.3s ease, top 0.8s ease, left 0.8s ease, opacity 0.5s ease;
 }
 
 /* Appear animation for new cards */
@@ -60,9 +59,10 @@
   animation: statusHighlight 1.5s ease;
 }
 
-/* Winner pile animation entry points */
+/* Winner piles: fixed-position targets the trick cards fly to, and positioned
+   containers for the stacked won cards. */
 .winner-pile-player,
-.winner-pile-gpt {
+.winner-pile-ai {
   position: fixed;
   width: 80px;
   height: 120px;
@@ -72,8 +72,6 @@
   border-radius: 10px;
   background-color: rgba(0, 0, 0, 0.05);
   overflow: visible;
-  /* Make pile a positioned container for stacked cards */
-  position: fixed;
 }
 
 .winner-pile-player {
@@ -81,15 +79,14 @@
   right: 5vw;
 }
 
-.winner-pile-gpt {
+.winner-pile-ai {
   top: 15vh; /* Move down from 5vh to 15vh to avoid overlap with game info */
   right: 5vw;
 }
 
 /* Add labels to the piles */
 .winner-pile-player::before,
-.winner-pile-gpt::before {
-  content: attr(data-label);
+.winner-pile-ai::before {
   position: absolute;
   font-size: 0.8rem;
   background-color: rgba(255, 255, 255, 0.7);
@@ -104,8 +101,8 @@
   right: 0;
 }
 
-.winner-pile-gpt::before {
-  content: "GPT's Cards";
+.winner-pile-ai::before {
+  content: "AI's Cards";
   bottom: -20px;
   right: 0;
 }
@@ -119,7 +116,7 @@
 
 /* Add subtle shadow to show stacking */
 .winner-pile-player .won-card,
-.winner-pile-gpt .won-card {
+.winner-pile-ai .won-card {
   box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
 }
 
@@ -182,7 +179,7 @@
   animation: pulseGreen 2s infinite;
 }
 
-.turn-indicator.gpt-turn {
+.turn-indicator.ai-turn {
   background-color: rgba(33, 150, 243, 0.8);
   animation: pulseBlue 2s infinite;
 }

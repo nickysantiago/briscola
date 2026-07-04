@@ -1,6 +1,5 @@
-/* cards.css - Card styling and animations */
+/* cards.css - Card styling */
 
-/* Card styling and animations */
 .card {
   width: clamp(70px, 18vw, 110px);
   height: clamp(105px, 27vw, 165px);
@@ -17,7 +16,6 @@
   background-position: center;
   font-weight: bold;
   color: transparent; /* Hide text since we have images */
-  transition: transform 0.3s ease, top 0.5s ease, left 0.5s ease, position 0.5s ease;
 }
 
 .hand .card {

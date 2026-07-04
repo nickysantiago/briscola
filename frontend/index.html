@@ -19,18 +19,22 @@
         <p>A traditional Spanish card game</p>
         <button id="start-game" class="action-button">Start Game</button>
 
-        <!-- Difficulty selection - initially hidden -->
+        <!-- Difficulty selection - initially hidden. Must stay in sync with the
+             version rebuilt by showDifficultySelection() in js/controller.js. -->
         <div id="difficulty-selection" style="display: none; margin-top: 30px;">
           <h3>Select Difficulty</h3>
           <div class="difficulty-buttons">
             <button id="easy-mode" class="difficulty-button easy">
               <span>Easy</span>
+              <small>Random plays</small>
             </button>
             <button id="normal-mode" class="difficulty-button normal">
               <span>Normal</span>
+              <small>Strategic plays</small>
             </button>
             <button id="hard-mode" class="difficulty-button hard">
               <span>Hard</span>
+              <small>Expert strategy</small>
             </button>
           </div>
         </div>

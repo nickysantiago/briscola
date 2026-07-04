@@ -1,12 +1,8 @@
-// ui-renderer.js - UI rendering functions with enhanced animations.
+// ui-renderer.js - All DOM rendering, driven by the client-side snapshot.
 //
-// Rewired for the backend migration: this module now reads from the client-side
-// `clientState` (populated by Socket.io `gameState` snapshots) instead of the
-// former game-state.js, and it no longer triggers AI moves (the server decides
-// those, and animations.js drives the AI's card flights). Every piece of DOM
-// building and every CSS class is unchanged from the pre-migration version, so the
-// board looks identical. `gptHand.length` / `deck.length` became the public
-// counts `gptHandCount` / `deckCount`.
+// Reads from `clientState`, which is kept in sync by Socket.io `gameState`
+// snapshots. The server never reveals the AI's hand or the deck contents, so
+// the board shows the public counts `aiHandCount` / `deckCount` instead.
 
 import { clientState } from './client-state.js';
 
@@ -40,18 +36,18 @@ function renderGame() {
         <strong>Your Points:</strong> ${clientState.playerPoints}
       </div>
       <div class="game-info-item">
-        <strong>GPT Points:</strong> ${clientState.gptPoints}
+        <strong>AI Points:</strong> ${clientState.aiPoints}
       </div>
       <div class="game-info-item">
-        <strong>Deck:</strong> ${clientState.deckCount} | <strong>GPT Hand:</strong> ${clientState.gptHandCount}
+        <strong>Deck:</strong> ${clientState.deckCount} | <strong>AI Hand:</strong> ${clientState.aiHandCount}
       </div>
       <div class="game-info-item">
         <strong>Mode:</strong> <span class="difficulty-indicator ${clientState.difficulty}">${getDifficultyName()}</span>
       </div>
     </div>
 
-    <div class="turn-indicator ${clientState.playerLeads ? 'player-turn' : 'gpt-turn'}">
-      ${clientState.playerLeads ? "Your Turn" : "GPT's Turn"}
+    <div class="turn-indicator ${clientState.playerLeads ? 'player-turn' : 'ai-turn'}">
+      ${clientState.playerLeads ? "Your Turn" : "AI's Turn"}
     </div>
 
     <div class="trump-card">
@@ -67,14 +63,14 @@ function renderGame() {
     <div class="winner-pile-player" id="player-pile">
       ${renderWonCards(clientState.playerWonCards)}
     </div>
-    <div class="winner-pile-gpt" id="gpt-pile">
-      ${renderWonCards(clientState.gptWonCards)}
+    <div class="winner-pile-ai" id="ai-pile">
+      ${renderWonCards(clientState.aiWonCards)}
     </div>
 
     <div class="hand">
       <h2>Your Hand (${clientState.playerHand.length}):</h2>
       <div class="cards-container ${clientState.playerLeads ? 'your-turn' : ''}">
-        ${clientState.playerHand.map((card, index) => renderCard(card, index)).join('')}
+        ${clientState.playerHand.map((card, index) => renderCardImage(card, index, true)).join('')}
       </div>
     </div>
   `;
@@ -96,10 +92,9 @@ function renderGame() {
   }
 }
 
-// Render the game-over panel. Ported from the original game-state.js endGame().
-// On a fresh-load resume of a finished game the board has not been built yet, so
-// build it first; mid-game (the trick that ended the game) the board already
-// exists and we only drop the panel into the play area, matching the original.
+// Render the game-over panel. On a fresh-load resume of a finished game the
+// board has not been built yet, so build it first; mid-game (the trick that
+// ended the game) the board already exists and only the panel is dropped in.
 function renderGameOver() {
   let playArea = document.getElementById('play-area');
   if (!playArea) {
@@ -110,23 +105,23 @@ function renderGameOver() {
   playArea.innerHTML = '';
 
   const playerPoints = clientState.playerPoints;
-  const gptPoints = clientState.gptPoints;
+  const aiPoints = clientState.aiPoints;
 
   const gameOverDisplay = document.createElement('div');
   gameOverDisplay.className = 'play-field';
-  gameOverDisplay.style.backgroundColor = playerPoints > gptPoints ? '#e8f5e9' :
-                                          playerPoints < gptPoints ? '#ffebee' :
+  gameOverDisplay.style.backgroundColor = playerPoints > aiPoints ? '#e8f5e9' :
+                                          playerPoints < aiPoints ? '#ffebee' :
                                           '#e3f2fd';
 
-  const result = playerPoints > gptPoints ? '🎉 You win!' :
-                 playerPoints < gptPoints ? 'GPT wins 😢' :
+  const result = playerPoints > aiPoints ? '🎉 You win!' :
+                 playerPoints < aiPoints ? 'AI wins 😢' :
                  'It\'s a tie!';
 
   gameOverDisplay.innerHTML = `
     <h2>${result}</h2>
     <div style="margin: 10px 0; font-size: 1.2em;">
       <p>Your Points: ${playerPoints}</p>
-      <p>GPT Points: ${gptPoints}</p>
+      <p>AI Points: ${aiPoints}</p>
     </div>
     <div class="difficulty-played">
       <p>Difficulty: <span class="difficulty-indicator ${clientState.difficulty}">${getDifficultyName()}</span></p>
@@ -141,11 +136,8 @@ function renderGameOver() {
   }
 }
 
-function renderCard(card, index) {
-  // Hand cards are clickable; the controller's window.playCard guards illegal/locked clicks.
-  return renderCardImage(card, index, true);
-}
-
+// Clickable hand cards get an onclick that calls the controller's global
+// playCard(index), which guards illegal/locked clicks.
 function renderCardImage(card, index, clickable) {
   if (!card) {
     console.error('Trying to render null or undefined card');
@@ -188,31 +180,31 @@ function createPlayField(playerCard) {
   return playField;
 }
 
-function addGptCardToPlayField(gptCard) {
+function addAiCardToPlayField(aiCard) {
   const playField = document.querySelector('.play-field');
   if (playField) {
     playField.querySelector('.played-cards').innerHTML += `
-      <div class="gpt-played">
-        <h4>GPT's Play:</h4>
-        ${renderCardImage(gptCard, -1, false)}
+      <div class="ai-played">
+        <h4>AI's Play:</h4>
+        ${renderCardImage(aiCard, -1, false)}
       </div>
     `;
   } else {
-    console.error('Play field not found when adding GPT card');
+    console.error('Play field not found when adding AI card');
   }
 }
 
-function createGptPlayField(gptCard) {
+function createAiPlayField(aiCard) {
   const trumpCard = clientState.trumpCard;
   const playField = document.createElement('div');
   playField.className = 'play-field';
   playField.innerHTML = `
     <div class="played-cards">
-      <div class="gpt-played">
-        <h4>GPT's Play:</h4>
-        <div class="card gpt-card-played ${trumpCard && gptCard.suit === trumpCard.suit ? 'trump' : ''}"
-             style="background-image: url('cards/${gptCard.value}_of_${gptCard.suit.toLowerCase()}.png')">
-          ${gptCard.value} of ${gptCard.suit}
+      <div class="ai-played">
+        <h4>AI's Play:</h4>
+        <div class="card ai-card-played ${trumpCard && aiCard.suit === trumpCard.suit ? 'trump' : ''}"
+             style="background-image: url('cards/${aiCard.value}_of_${aiCard.suit.toLowerCase()}.png')">
+          ${aiCard.value} of ${aiCard.suit}
         </div>
       </div>
     </div>
@@ -223,7 +215,7 @@ function createGptPlayField(gptCard) {
     playArea.innerHTML = '';
     playArea.appendChild(playField);
   } else {
-    console.error('Play area not found when creating GPT play field');
+    console.error('Play area not found when creating AI play field');
     document.getElementById('game').appendChild(playField);
   }
 }
@@ -296,12 +288,9 @@ function renderWonCards(cards) {
 export {
   renderGame,
   renderGameOver,
-  renderCard,
-  renderCardImage,
   createPlayField,
-  addGptCardToPlayField,
-  createGptPlayField,
+  addAiCardToPlayField,
+  createAiPlayField,
   addPlayerCardToPlayField,
-  showPointsAnimation,
-  renderWonCards
+  showPointsAnimation
 };
