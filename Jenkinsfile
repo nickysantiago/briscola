@@ -27,7 +27,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
-                echo "Branch : ${env.BRANCH_NAME}" // This only populates in multi-pipeline Jenkins jobs! In this case it's just null. 
+                echo "Branch : ${env.BRANCH_NAME}" // This only populates in multi-pipeline Jenkins jobs
                 echo "Commit : ${env.GIT_COMMIT}"
             }
         }
@@ -37,12 +37,6 @@ pipeline {
                 echo "Running Lint..."
                 echo "Running SAST scan..."
             }
-        }
-
-        stage('Dependency Scan') { // Snyk Test
-            steps {
-                echo "Running snyk test scan..."
-            }
         } 
 
         stage('Build') {
@@ -51,6 +45,12 @@ pipeline {
             }
         }
 
+        stage('Dependency Scan') { // Snyk Test
+            steps {
+                echo "Running snyk test scan..."
+            }
+        }
+        
         stage('Unit Test') {
             steps {
                 echo "Running Unit Testing..."
