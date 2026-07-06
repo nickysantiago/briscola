@@ -6,12 +6,15 @@
 		card,
 		clickable = false,
 		isTrump = false,
+		dragging = false,
 		size = 'normal',
 		onclick
 	}: {
 		card: Card;
 		clickable?: boolean;
 		isTrump?: boolean;
+		/** Being dragged: the wrapper owns the transform, so no hover lift. */
+		dragging?: boolean;
 		size?: 'normal' | 'mini';
 		onclick?: () => void;
 	} = $props();
@@ -25,8 +28,10 @@
 	class="rounded-card block bg-white bg-cover bg-center
 		{size === 'mini' ? 'h-[66px] w-[44px]' : 'h-(--card-h) w-(--card-w)'}
 		{isTrump ? 'ring-sun shadow-trump ring-4' : 'shadow-chunky-sm ring-1 ring-black/10'}
-		{clickable
-		? 'cursor-pointer transition-transform duration-150 ease-out hover:-translate-y-3 hover:scale-105 hover:rotate-2 active:translate-y-0 active:scale-95'
-		: ''}"
+		{dragging
+		? 'cursor-grabbing shadow-xl'
+		: clickable
+			? 'cursor-grab transition-transform duration-150 ease-out hover:-translate-y-3 hover:scale-105 hover:rotate-2 active:scale-95'
+			: ''}"
 	style="background-image: url('{cardImg(card)}')"
 ></svelte:element>

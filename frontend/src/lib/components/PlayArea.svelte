@@ -2,6 +2,7 @@
 	import { backOut } from 'svelte/easing';
 	import { fly, scale } from 'svelte/transition';
 	import { cardKey, FLIGHT_MS } from '$lib/constants';
+	import { drag } from '$lib/drag.svelte';
 	import { game } from '$lib/game.svelte';
 	import { receive, send } from '$lib/transitions';
 	import CardView from './CardView.svelte';
@@ -15,7 +16,7 @@
 	const aiPlayed = $derived(game.table.aiCard ? [game.table.aiCard] : []);
 </script>
 
-<div class="flex flex-col items-center gap-3">
+<div id="play-area" class="flex flex-col items-center gap-3">
 	<div class="flex min-h-(--card-h) items-start justify-center gap-[clamp(15px,4vw,30px)]">
 		<!-- Player's played card -->
 		<div class="flex flex-col items-center gap-1">
@@ -26,6 +27,18 @@
 			{/each}
 			{#if game.table.playerCard}
 				<span class="text-ink/60 text-xs font-extrabold uppercase">You</span>
+			{:else if drag.pointerActive}
+				<!-- Drop target shown while a hand card is being dragged -->
+				<div
+					class="rounded-card flex h-(--card-h) w-(--card-w) items-center justify-center
+						border-4 border-dashed text-center text-xs font-extrabold uppercase
+						transition-all duration-150
+						{drag.over
+						? 'border-leaf bg-leaf/15 text-leaf-dark scale-110'
+						: 'border-ink/25 text-ink/40'}"
+				>
+					Play here
+				</div>
 			{/if}
 		</div>
 

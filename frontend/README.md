@@ -13,6 +13,7 @@ animations from server outcomes.
 | `src/lib/game.svelte.ts` | Reactive client state (Svelte 5 runes). Two-buffer design: `latest` (non-reactive authoritative snapshot buffer) vs `game.view` (what the board renders). While a trick animates (`game.busy`), incoming snapshots are stashed in `latest`; `settle()` promotes them to `view` when the animation finishes. Also owns the `brisca:gameId` localStorage persistence for resume. |
 | `src/lib/orchestrator.ts` | The per-trick animation sequence. Mutates reactive state on a schedule (card leaves hand → AI responds → winner banner → cards fly to pile → board settles → AI lead flies in); Svelte transitions turn each mutation into a flight. All animation timing lives here + `constants.ts`. |
 | `src/lib/transitions.ts` | Shared `crossfade` send/receive pair — cards visually fly between hand, play area, and winner piles. |
+| `src/lib/drag.svelte.ts` | Drag-to-play state. Hand cards can be clicked *or* dragged onto the play area (pointer events, mouse + touch); the play area renders the drop-target highlight, and a missed drop springs the card back. |
 | `src/lib/constants.ts` | Animation timings, card image/key helpers, localStorage key. Game rules live server-side. |
 | `src/lib/types.ts` | TypeScript shapes of the Socket.io contract (snapshot, trick outcome, errors). |
 | `src/lib/components/` | The screen/component tree: `TitleScreen`, `DifficultySelect`, `GameBoard` (+ `GameInfo`, `TurnIndicator`, `TrumpCard`, `PlayArea`, `Hand`, `CardView`, `WinnerPile`, `PointsPopup`, `GameOverPanel`), `FooterBar`. |
