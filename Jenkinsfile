@@ -13,9 +13,9 @@ pipeline {
     agent any
 
     environment {
-        DEPLOY_HOST = 'jenkins@192.168.0.101'
-        SSH_CRED    = '96f5c053-7651-404f-8379-5db4d3ecf58f'
-        COMPOSE_DIR = '/home/jenkins/workspace/brisca_home'
+        DEPLOY_HOST = 'jenkins@192.168.0.102'
+        SSH_CRED    = '33f20951-ae0b-4e2a-8e19-22848a7c8492'
+        COMPOSE_DIR = '/home/jenkins/brisca_home/briscola/'
     }
 
     stages {
@@ -36,7 +36,7 @@ pipeline {
         stage('Cleanup') {
             steps {
                 sshagent([env.SSH_CRED]) {
-                    sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'docker image prune -f'"
+                    sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'docker ps'"
                 }
             }
         }
