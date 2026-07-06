@@ -15,20 +15,23 @@
 	const SPRING_BACK_MS = 400;
 
 	const trumpSuit = $derived(game.view?.trumpCard?.suit ?? null);
-	const canPlay = $derived(
+	// Solo: playable when leading or once the AI's lead is on the table.
+	// Multiplayer: the snapshot's seat-relative myTurn is authoritative (false
+	// while my own led card waits for the opponent).
+	const myTurn = $derived(
 		!!game.view &&
-			!game.busy &&
-			game.view.gameActive &&
-			(game.view.playerLeads || game.table.aiCard !== null)
+			(game.view.mode === 'multi'
+				? game.view.myTurn
+				: game.view.playerLeads || game.table.aiCard !== null)
 	);
+	const canPlay = $derived(!!game.view && !game.busy && game.view.gameActive && myTurn);
 
 	let pressed: { x: number; y: number; index: number; key: string } | null = null;
 	let suppressClick = false;
 
 	function play(index: number): boolean {
 		// Same guards as the old controller; the server's seq is the authority.
-		if (!game.view || game.busy || !game.view.gameActive) return false;
-		if (!game.view.playerLeads && game.table.aiCard === null) return false;
+		if (!canPlay || !game.view) return false;
 		game.busy = true;
 		emitPlayCard(game.view.gameId, index, game.view.seq);
 		return true;

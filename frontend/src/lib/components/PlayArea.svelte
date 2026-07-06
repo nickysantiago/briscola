@@ -8,6 +8,7 @@
 	import CardView from './CardView.svelte';
 
 	const trumpSuit = $derived(game.view?.trumpCard?.suit ?? null);
+	const oppName = $derived(game.view?.names?.opponent ?? 'AI');
 
 	// Single-item keyed each blocks (not #if): a leaving block keeps its old
 	// item value during the outro, so out:send still sees the card after the
@@ -53,7 +54,7 @@
 				</div>
 			{/each}
 			{#if game.table.aiCard}
-				<span class="text-ink/60 text-xs font-extrabold uppercase">AI</span>
+				<span class="text-ink/60 text-xs font-extrabold uppercase">{oppName}</span>
 			{/if}
 		</div>
 	</div>
@@ -65,7 +66,7 @@
 			class="rounded-blob px-5 py-2 text-lg font-extrabold text-white shadow-chunky
 				{game.trick.winner === 'player' ? 'bg-leaf' : 'bg-sky'}"
 		>
-			{game.trick.winner === 'player' ? 'You win the trick!' : 'AI wins the trick!'}
+			{game.trick.winner === 'player' ? 'You win the trick!' : `${oppName} wins the trick!`}
 			<span class="text-sun">+{game.trick.points}</span>
 		</div>
 	{/if}

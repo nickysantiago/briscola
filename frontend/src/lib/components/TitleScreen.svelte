@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { backOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
-	import { game, getStoredGameId, startLoading } from '$lib/game.svelte';
-	import { emitResume } from '$lib/net';
+	import { game, getStoredGameId, getStoredMpToken, startLoading } from '$lib/game.svelte';
+	import { emitReconnectMultiplayerGame, emitResume } from '$lib/net';
 	import CardView from './CardView.svelte';
 	import type { Card } from '$lib/types';
 
@@ -19,6 +19,14 @@
 	const canResume = $derived(!!game.view?.gameActive);
 
 	function resumeGame() {
+		// A live multiplayer game resumes by seat token; solo by gameId.
+		if (game.view?.mode === 'multi') {
+			const token = getStoredMpToken();
+			if (!token) return;
+			startLoading();
+			emitReconnectMultiplayerGame(token);
+			return;
+		}
 		const gameId = getStoredGameId();
 		if (!gameId) return;
 		startLoading();
@@ -55,6 +63,12 @@
 			onclick={() => (game.screen = 'difficulty')}
 		>
 			Start Game
+		</button>
+		<button
+			class="btn-chunky bg-sky border-sky-dark px-10 py-4 text-2xl"
+			onclick={() => (game.screen = 'mpMenu')}
+		>
+			Multi Player
 		</button>
 		{#if canResume}
 			<button class="btn-chunky bg-mint border-mint-dark px-10 py-4 text-2xl" onclick={resumeGame}>

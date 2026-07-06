@@ -161,12 +161,12 @@ test('hard mode: full games against a random player complete legally', () => {
     const s = createGame('hard', `fuzz-${g}`);
     let tricks = 0;
     while (s.gameActive) {
-      const idx = Math.floor(Math.random() * s.playerHand.length);
+      const idx = Math.floor(Math.random() * s.seats.A.hand.length);
       applyPlayerMove(s, idx);
       tricks++;
       assert.ok(tricks <= 20, 'game must end within 20 tricks');
     }
-    assert.equal(s.playerPoints + s.aiPoints, 120, 'all 120 points accounted for');
+    assert.equal(s.seats.A.points + s.seats.B.points, 120, 'all 120 points accounted for');
   }
 });
 

@@ -10,11 +10,12 @@
 	const cards = $derived(
 		who === 'player' ? (game.view?.playerWonCards ?? []) : (game.view?.aiWonCards ?? [])
 	);
+	const oppName = $derived(game.view?.names?.opponent ?? 'AI');
 </script>
 
 <div class="relative flex flex-col items-center gap-1">
 	<span class="text-ink/60 text-xs font-extrabold tracking-wide uppercase">
-		{who === 'player' ? 'Your wins' : "AI's wins"}
+		{who === 'player' ? 'Your wins' : `${oppName}'s wins`}
 	</span>
 
 	<div class="relative h-[66px] w-[44px]">
