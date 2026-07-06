@@ -25,7 +25,7 @@
 {#if result}
 	{@const look = looks[result.winner]}
 	<div
-		in:scale={{ duration: 450, easing: backOut, start: 0.6 }}
+		in:scale|global={{ duration: 450, easing: backOut, start: 0.6 }}
 		class="rounded-blob flex flex-col items-center gap-2 px-8 py-6 text-center shadow-chunky
 			ring-4 backdrop-blur-sm {look.panel}"
 	>

@@ -2,6 +2,8 @@
 	import '@fontsource-variable/baloo-2';
 	import '../app.css';
 	import FooterBar from '$lib/components/FooterBar.svelte';
+	import HomeButton from '$lib/components/HomeButton.svelte';
+	import LoadingOverlay from '$lib/components/LoadingOverlay.svelte';
 
 	let { children } = $props();
 </script>
@@ -23,3 +25,6 @@
 
 	<FooterBar />
 </div>
+
+<HomeButton />
+<LoadingOverlay />

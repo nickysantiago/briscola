@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { backOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
-	import { game } from '$lib/game.svelte';
+	import { game, startLoading } from '$lib/game.svelte';
 	import { emitNewGame } from '$lib/net';
 	import type { Difficulty } from '$lib/types';
 
@@ -13,15 +13,17 @@
 
 	function startNewGame(difficulty: Difficulty) {
 		game.busy = false;
+		startLoading();
 		emitNewGame(difficulty);
-		// The board appears when the server's first snapshot settles.
+		// The board appears (and the loading screen lifts) when the server's
+		// first snapshot settles.
 	}
 </script>
 
 <div class="flex h-full flex-col items-center justify-center gap-8 px-4 text-center">
 	<h2
 		class="text-grape text-3xl font-extrabold sm:text-4xl"
-		in:fly={{ y: -20, duration: 400, easing: backOut }}
+		in:fly|global={{ y: -20, duration: 400, easing: backOut }}
 	>
 		Pick your challenge
 	</h2>
@@ -29,7 +31,7 @@
 	<div class="flex w-full max-w-2xl flex-col justify-center gap-4 sm:flex-row">
 		{#each options as { difficulty, label, hint, classes }, i (difficulty)}
 			<button
-				in:fly={{ y: 30, duration: 450, delay: 100 + i * 120, easing: backOut }}
+				in:fly|global={{ y: 30, duration: 450, delay: 100 + i * 120, easing: backOut }}
 				class="btn-chunky {classes} flex-1 px-8 py-5"
 				onclick={() => startNewGame(difficulty)}
 			>

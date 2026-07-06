@@ -8,6 +8,11 @@ export const PILE_FLIGHT_MS = 800;
 export const STATUS_HOLD_MS = 1000;
 export const POINTS_POPUP_MS = 1500;
 
+// The loading screen stays up until the server state settles, but never less
+// than this — and a failsafe dismisses it if the backend never answers.
+export const MIN_LOADING_MS = 1000;
+export const LOADING_FAILSAFE_MS = 8000;
+
 export const GAME_ID_KEY = 'brisca:gameId';
 
 export const SUITS: Suit[] = ['Oros', 'Copas', 'Espadas', 'Bastos'];

@@ -1,4 +1,4 @@
-import { GAME_ID_KEY } from './constants';
+import { GAME_ID_KEY, MIN_LOADING_MS } from './constants';
 import type { Card, Snapshot } from './types';
 
 /**
@@ -11,6 +11,12 @@ let latest: Snapshot | null = null;
 
 export const game = $state({
 	screen: 'title' as 'title' | 'difficulty' | 'game',
+	/**
+	 * Loading overlay: up while the app boots or a newGame/resume round-trip is
+	 * in flight, and always for at least MIN_LOADING_MS. Starts true so the
+	 * very first render is the loading screen.
+	 */
+	loading: true,
 	/** What the board renders. Lags `latest` while a trick animates. */
 	view: null as Snapshot | null,
 	/**
@@ -55,6 +61,29 @@ export function settle(showAiCard = true) {
 	game.table.aiCard = showAiCard ? game.view.currentAiCard : null;
 	game.trick = null;
 	game.screen = 'game';
+	finishLoading();
+}
+
+// Loading-screen lifecycle. `loadingSince` starts at module init, which is
+// effectively the app's first render; the token invalidates pending
+// dismissals when a new loading phase starts.
+let loadingSince = Date.now();
+let loadingToken = 0;
+
+export function startLoading() {
+	loadingToken++;
+	loadingSince = Date.now();
+	game.loading = true;
+}
+
+/** Dismiss the loading screen, but never before MIN_LOADING_MS has shown. */
+export function finishLoading() {
+	if (!game.loading) return;
+	const token = ++loadingToken;
+	const remain = Math.max(0, MIN_LOADING_MS - (Date.now() - loadingSince));
+	setTimeout(() => {
+		if (token === loadingToken) game.loading = false;
+	}, remain);
 }
 
 export function getStoredGameId(): string | null {

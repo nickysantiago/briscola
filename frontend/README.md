@@ -16,7 +16,7 @@ animations from server outcomes.
 | `src/lib/drag.svelte.ts` | Drag-to-play state. Hand cards can be clicked *or* dragged onto the play area (pointer events, mouse + touch); the play area renders the drop-target highlight, and a missed drop springs the card back. |
 | `src/lib/constants.ts` | Animation timings, card image/key helpers, localStorage key. Game rules live server-side. |
 | `src/lib/types.ts` | TypeScript shapes of the Socket.io contract (snapshot, trick outcome, errors). |
-| `src/lib/components/` | The screen/component tree: `TitleScreen`, `DifficultySelect`, `GameBoard` (+ `GameInfo`, `TurnIndicator`, `TrumpCard`, `PlayArea`, `Hand`, `CardView`, `WinnerPile`, `PointsPopup`, `GameOverPanel`), `FooterBar`. |
+| `src/lib/components/` | The screen/component tree: `TitleScreen` (Start + Resume when a game is unfinished), `DifficultySelect`, `GameBoard` (+ `GameInfo`, `TurnIndicator`, `TrumpCard`, `PlayArea`, `Hand`, `CardView`, `WinnerPile`, `PointsPopup`, `GameOverPanel`), `FooterBar`, `HomeButton` (bottom-right, back to title), `LoadingOverlay` (min-1s loading screen on boot/newGame/resume, dismissed by `settle()`/`errorState`). |
 | `src/routes/` | Single prerendered route (`ssr = false`, `prerender = true`): connects the socket, preloads card art, resumes a stored game, and switches between the three screens. |
 | `static/cards/` | The original 40 card PNGs (`{value}_of_{suit}.png`), served at `cards/…` as before. |
 | `src/app.css` | Tailwind v4 theme: palette, radii, shadows, and animation keyframes. |

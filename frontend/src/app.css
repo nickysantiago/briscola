@@ -13,6 +13,7 @@
 	--color-sun: #ffd93d;
 	--color-sun-dark: #f5c400;
 	--color-mint: #4ecdc4;
+	--color-mint-dark: #35b0a8;
 	--color-leaf: #51cf66;
 	--color-leaf-dark: #2f9e44;
 	--color-sky: #339af0;
@@ -34,6 +35,7 @@
 	--animate-points-pop: points-pop 1.5s forwards;
 	--animate-pulse-cta: pulse-cta 1.6s ease-in-out infinite;
 	--animate-wiggle: wiggle 2.5s ease-in-out infinite;
+	--animate-letter-bounce: letter-bounce 1.1s ease-in-out infinite;
 
 	@keyframes pulse-green {
 		0% {
@@ -100,6 +102,16 @@
 		}
 		50% {
 			transform: rotate(1.5deg);
+		}
+	}
+	@keyframes letter-bounce {
+		0%,
+		60%,
+		100% {
+			transform: translateY(0);
+		}
+		30% {
+			transform: translateY(-10px);
 		}
 	}
 }

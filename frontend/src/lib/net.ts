@@ -1,5 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
-import { clearStoredGameId, game, getStoredGameId, setLatest } from './game.svelte';
+import { clearStoredGameId, finishLoading, game, getStoredGameId, setLatest } from './game.svelte';
 import { playTrickAnimation } from './orchestrator';
 import type { Difficulty, ErrorState, Snapshot, TrickOutcome } from './types';
 
@@ -34,6 +34,8 @@ export function connect() {
 
 	socket.on('errorState', (err: ErrorState) => {
 		game.busy = false;
+		// A failed newGame/resume must not strand the loading screen.
+		finishLoading();
 		if (err?.code === 'stale') {
 			// Out of sync (double-emit / reconnect) — re-pull authoritative state.
 			const gid = getStoredGameId();
