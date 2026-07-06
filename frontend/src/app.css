@@ -1,0 +1,156 @@
+@import 'tailwindcss';
+
+/* Short landscape phones — mirrors the old responsive.css breakpoint. */
+@custom-variant short-landscape (@media (orientation: landscape) and (max-height: 500px));
+
+@theme {
+	--font-display: 'Baloo 2 Variable', ui-rounded, system-ui, sans-serif;
+
+	/* Playful "fiesta" palette — warm cream table, candy accents. */
+	--color-table: #fff6e5;
+	--color-pop: #ff6b6b;
+	--color-pop-dark: #e03131;
+	--color-sun: #ffd93d;
+	--color-sun-dark: #f5c400;
+	--color-mint: #4ecdc4;
+	--color-leaf: #51cf66;
+	--color-leaf-dark: #2f9e44;
+	--color-sky: #339af0;
+	--color-sky-dark: #1971c2;
+	--color-grape: #845ef7;
+	--color-grape-dark: #6741d9;
+	--color-ink: #343a40;
+
+	--radius-card: 0.75rem;
+	--radius-blob: 1.5rem;
+
+	--shadow-chunky: 4px 4px 0 rgb(0 0 0 / 0.15);
+	--shadow-chunky-sm: 2px 2px 0 rgb(0 0 0 / 0.15);
+	--shadow-trump: 0 0 18px 4px rgb(255 217 61 / 0.65);
+
+	--animate-pulse-green: pulse-green 2s infinite;
+	--animate-pulse-blue: pulse-blue 2s infinite;
+	--animate-card-bounce: card-bounce 2s ease-in-out infinite;
+	--animate-points-pop: points-pop 1.5s forwards;
+	--animate-pulse-cta: pulse-cta 1.6s ease-in-out infinite;
+	--animate-wiggle: wiggle 2.5s ease-in-out infinite;
+
+	@keyframes pulse-green {
+		0% {
+			box-shadow: 0 0 0 0 rgb(81 207 102 / 0.6);
+		}
+		70% {
+			box-shadow: 0 0 0 12px transparent;
+		}
+		100% {
+			box-shadow: 0 0 0 0 transparent;
+		}
+	}
+	@keyframes pulse-blue {
+		0% {
+			box-shadow: 0 0 0 0 rgb(51 154 240 / 0.6);
+		}
+		70% {
+			box-shadow: 0 0 0 12px transparent;
+		}
+		100% {
+			box-shadow: 0 0 0 0 transparent;
+		}
+	}
+	@keyframes card-bounce {
+		0%,
+		100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(-6px);
+		}
+	}
+	@keyframes points-pop {
+		0% {
+			opacity: 0;
+			transform: scale(0.5);
+		}
+		20% {
+			opacity: 1;
+			transform: scale(1.25);
+		}
+		80% {
+			opacity: 1;
+			transform: scale(1.1);
+		}
+		100% {
+			opacity: 0;
+			transform: scale(1);
+		}
+	}
+	@keyframes pulse-cta {
+		0%,
+		100% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.07);
+		}
+	}
+	@keyframes wiggle {
+		0%,
+		100% {
+			transform: rotate(-1.5deg);
+		}
+		50% {
+			transform: rotate(1.5deg);
+		}
+	}
+}
+
+@layer components {
+	/* Chunky candy button: fat rounded shape, hard offset shadow, pressed state
+	   sinks into its bottom border. */
+	.btn-chunky {
+		@apply rounded-blob border-b-4 font-extrabold text-white shadow-chunky transition-all duration-150 ease-out select-none;
+	}
+	.btn-chunky:hover {
+		@apply -translate-y-0.5 brightness-105;
+	}
+	.btn-chunky:active {
+		@apply translate-y-1 border-b-2 shadow-none brightness-95;
+	}
+}
+
+html,
+body {
+	height: 100%;
+	overflow: hidden;
+	overscroll-behavior: none;
+}
+
+body {
+	font-family: var(--font-display);
+	color: var(--color-ink);
+	background-color: var(--color-table);
+	background-image:
+		radial-gradient(circle at 15% 20%, rgb(255 217 61 / 0.18) 0, transparent 30rem),
+		radial-gradient(circle at 85% 80%, rgb(78 205 196 / 0.16) 0, transparent 30rem),
+		radial-gradient(circle at 80% 10%, rgb(255 107 107 / 0.12) 0, transparent 24rem);
+	-webkit-tap-highlight-color: transparent;
+	user-select: none;
+}
+
+/* Card sizing — ports the old cards.css/responsive.css clamp + breakpoints. */
+:root {
+	--card-w: clamp(70px, 18vw, 110px);
+	--card-h: clamp(105px, 27vw, 165px);
+}
+@media (max-width: 480px) {
+	:root {
+		--card-w: 65px;
+		--card-h: 97px;
+	}
+}
+@media (orientation: landscape) and (max-height: 500px) {
+	:root {
+		--card-w: 55px;
+		--card-h: 82px;
+	}
+}

@@ -23,7 +23,7 @@ to a named Docker volume (`redis-data`) using both AOF and RDB, so game state su
 container restarts.
 
 ```
-frontend/   static site (index.html, css/, cards/, js/) + nginx.conf + Dockerfile
+frontend/   SvelteKit + Tailwind app (src/, static/cards/) + nginx.conf + Dockerfile
 backend/    server.js, store.js, game/{constants,engine,ai}.js, tests
 docker-compose.yml
 ```
@@ -68,8 +68,9 @@ node scripts/socket-smoke.mjs
 - The server is the sole authority on game state. A card click emits `playCard`; the
   server resolves the whole trick (including the AI's move) atomically, persists to
   Redis, and replies with a `trickResolved` outcome plus a public `gameState` snapshot.
-- The frontend keeps the original CSS/animations; it replays the same card-flight and
-  scoring animations from the server outcome. All animation timing lives on the client.
+- The frontend is a SvelteKit + Tailwind static app; it replays the card-flight and
+  scoring animations from the server outcome using Svelte transitions. All animation
+  timing lives on the client.
 - A per-game `seq` turn token rejects stale/duplicate moves (double-click, reconnect).
 - The snapshot sent to the browser never includes the AI's hand, the deck contents, or
   the AI's card-counting state — so the opponent can't be read from devtools.
