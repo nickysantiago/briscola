@@ -22,14 +22,14 @@ pipeline {
         stage('Build') {
             steps {
                 sshagent([env.SSH_CRED]) {
-                    sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'cd ${COMPOSE_DIR} && git pull --ff-only && docker-compose build'"
+                    sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'cd ${COMPOSE_DIR} && git pull --ff-only && docker compose build'"
                 }
             }
         }
         stage('Deploy') {
             steps {
                 sshagent([env.SSH_CRED]) {
-                    sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'cd ${COMPOSE_DIR} && docker-compose up -d'"
+                    sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'cd ${COMPOSE_DIR} && docker compose up -d'"
                 }
             }
         }
