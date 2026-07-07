@@ -14,6 +14,7 @@ export const MIN_LOADING_MS = 1000;
 export const LOADING_FAILSAFE_MS = 8000;
 
 export const GAME_ID_KEY = 'brisca:gameId';
+export const MP_TOKEN_KEY = 'brisca:mpToken';
 
 export const SUITS: Suit[] = ['Oros', 'Copas', 'Espadas', 'Bastos'];
 export const VALUES = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12];
