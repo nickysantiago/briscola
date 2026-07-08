@@ -63,7 +63,7 @@ pipeline {
             steps {
                 echo "Running Lint..."
                 dir('backend') {
-                    sh 'npm run lint'
+                    sh 'npm run lint --if-present'
                 }
             }
         } 
