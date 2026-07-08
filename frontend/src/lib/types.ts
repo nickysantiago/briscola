@@ -32,6 +32,8 @@ export interface Snapshot {
 	aiHandCount: number;
 	deckCount: number;
 	trumpCard: Card | null;
+	/** True once the trump has been picked up (the deck===1 draw); the card stays visible but greyed out. */
+	trumpTaken: boolean;
 	playerPoints: number;
 	aiPoints: number;
 	playerLeads: boolean;

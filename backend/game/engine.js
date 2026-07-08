@@ -395,6 +395,7 @@ function toSnapshot(state, seat = 'A', now = Date.now()) {
     aiHandCount: them.hand.length,
     deckCount: state.deck.length,
     trumpCard: state.trumpCard,
+    trumpTaken: state.trumpTaken,
     playerPoints: me.points,
     aiPoints: them.points,
     playerLeads: state.leader === seat,
