@@ -5,8 +5,9 @@
 //   node scripts/mp-smoke.mjs        (from the backend/ directory)
 //
 // Exercises: create/join lobby, seat-relative snapshots, turn enforcement,
-// a full human-vs-human game with a mid-game token reconnect, and the
-// disconnect-grace + End Game flow (waits ~10s for the grace period).
+// a full human-vs-human game with a mid-game token reconnect, the rematch
+// vote/restart flow, and the disconnect-grace + End Game flow (waits ~10s
+// for the grace period).
 
 import { io } from 'socket.io-client';
 import assert from 'node:assert/strict';
@@ -111,29 +112,46 @@ async function main() {
     assert.notEqual(snapA.gameOver.winner, snapB.gameOver.winner, 'winner is seat-relative');
   }
   console.log('full game OK  %d-%d  winner(host view)=%s', snapA.playerPoints, snapA.aiPoints, snapA.gameOver.winner);
-  hostSock.close();
-  guestSock.close();
 
-  // ---- Disconnect grace + End Game ------------------------------------------
-  const hostSock2 = await connect();
-  const guestSock2 = await connect();
-  hostSock2.emit('createMultiplayerGame', { name: 'Carla' });
-  const lobby2 = await waitEvent(hostSock2, 'lobbyCreated');
-  const pJoin2 = waitEvent(guestSock2, 'lobbyJoined');
-  const pSnap2 = waitEvent(hostSock2, 'gameState');
-  guestSock2.emit('joinMultiplayerGame', { code: lobby2.code, name: 'Dani' });
-  const joined2 = await pJoin2;
-  const snap2 = await pSnap2;
+  // ---- Rematch: vote, mirrored pending state, restart in place --------------
+  let pA = waitEvent(hostSock, 'gameState');
+  let pB = waitEvent(guestSock, 'gameState');
+  hostSock.emit('requestRematch', { gameId });
+  [snapA, snapB] = await Promise.all([pA, pB]);
+  assert.deepEqual(snapA.rematch, { me: true, opponent: false }, 'host sees own vote');
+  assert.deepEqual(snapB.rematch, { me: false, opponent: true }, 'guest sees the host vote');
+  assert.ok(snapA.gameOver, 'still finished until both agree');
 
+  pA = waitEvent(hostSock, 'gameState');
+  pB = waitEvent(guestSock, 'gameState');
+  guestSock.emit('requestRematch', { gameId });
+  [snapA, snapB] = await Promise.all([pA, pB]);
+  assert.equal(snapA.gameId, gameId, 'rematch keeps the same session');
+  assert.equal(snapA.gameActive, true);
+  assert.equal(snapA.seq, 0);
+  assert.equal(snapA.playerPoints + snapA.aiPoints, 0);
+  assert.equal(snapA.deckCount, 33);
+  assert.equal(snapA.myTurn, true, 'host leads the rematch');
+  assert.deepEqual(snapA.names, { me: 'Ana', opponent: 'Beto' });
+  assert.equal(snapB.myTurn, false);
+
+  // The fresh game is live: play one lead.
+  pB = waitEvent(guestSock, 'trickLed');
+  hostSock.emit('playCard', { gameId, index: 0, seq: snapA.seq });
+  const led = await pB;
+  assert.equal(led.mine, false);
+  console.log('rematch OK (fresh deal, same lobby/tokens, host leads)');
+
+  // ---- Disconnect grace + End Game (on the rematch game) --------------------
   console.log('waiting out the disconnect grace period (~9s)…');
-  const pDisc = waitEvent(hostSock2, 'opponentDisconnected', 20000);
-  guestSock2.close();
+  const pDisc = waitEvent(hostSock, 'opponentDisconnected', 20000);
+  guestSock.close();
   const disc = await pDisc;
   assert.ok(disc.disconnectDeadline > Date.now(), '24h deadline published');
   console.log('opponentDisconnected OK (grace period honored)');
 
-  const pTerm = waitEvent(hostSock2, 'gameTerminated');
-  hostSock2.emit('endGame', { gameId: snap2.gameId });
+  const pTerm = waitEvent(hostSock, 'gameTerminated');
+  hostSock.emit('endGame', { gameId });
   const term = await pTerm;
   assert.equal(term.reason, 'youEnded');
   console.log('endGame OK (no winner recorded)');
@@ -141,11 +159,11 @@ async function main() {
   // The dead session's token no longer resolves.
   const probe = await connect();
   const pGone = waitEvent(probe, 'errorState');
-  probe.emit('reconnectMultiplayerGame', { token: joined2.token });
+  probe.emit('reconnectMultiplayerGame', { token: joined.token });
   const gone = await pGone;
   assert.equal(gone.code, 'unknownGame', 'terminated game tokens are revoked');
   probe.close();
-  hostSock2.close();
+  hostSock.close();
 
   console.log('\nMP SMOKE PASSED');
   process.exit(0);

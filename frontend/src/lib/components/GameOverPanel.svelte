@@ -1,10 +1,17 @@
 <script lang="ts">
 	import { backOut } from 'svelte/easing';
 	import { scale } from 'svelte/transition';
-	import { game } from '$lib/game.svelte';
+	import { game, leaveMultiplayer } from '$lib/game.svelte';
+	import { emitRequestRematch } from '$lib/net';
 
 	const isMulti = $derived(game.view?.mode === 'multi');
 	const oppName = $derived(game.view?.names?.opponent ?? 'AI');
+	const iVoted = $derived(!!game.view?.rematch?.me);
+	const oppVoted = $derived(!!game.view?.rematch?.opponent);
+
+	function playAgain() {
+		if (game.view) emitRequestRematch(game.view.gameId);
+	}
 
 	// The server sends a gameOver object; fall back to deriving from points for
 	// resumed finished games, just in case.
@@ -45,12 +52,28 @@
 		<span class="text-ink/60 text-sm font-bold capitalize">
 			{result.difficulty ?? 'multiplayer'} mode
 		</span>
-		<p class="text-ink/60 text-sm font-semibold">
-			{#if isMulti}
-				Head <strong>home</strong> to play again!
-			{:else}
-				Hit <strong>New Game</strong> to play again!
+		{#if isMulti}
+			{#if oppVoted && !iVoted}
+				<p class="text-grape text-base font-extrabold">{oppName} wants a rematch!</p>
 			{/if}
-		</p>
+			<div class="mt-1 flex flex-col items-center gap-3 sm:flex-row">
+				{#if iVoted}
+					<div class="rounded-full bg-white/80 px-5 py-2 text-base font-extrabold text-ink/60 shadow-chunky-sm ring-1 ring-black/5">
+						Waiting for {oppName}…
+					</div>
+				{:else}
+					<button class="btn-chunky bg-leaf border-leaf-dark px-6 py-3 text-lg" onclick={playAgain}>
+						Play Again
+					</button>
+				{/if}
+				<button class="btn-chunky bg-pop border-pop-dark px-6 py-3 text-lg" onclick={leaveMultiplayer}>
+					Leave
+				</button>
+			</div>
+		{:else}
+			<p class="text-ink/60 text-sm font-semibold">
+				Hit <strong>New Game</strong> to play again!
+			</p>
+		{/if}
 	</div>
 {/if}

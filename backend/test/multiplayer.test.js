@@ -155,7 +155,90 @@ test('a full multiplayer game plays to 120 points and cleans up its lobby', asyn
   }
 
   assert.deepEqual(await store.listActiveMp(), [], 'finished game left the sweep index');
-  assert.equal(await store.loadLobby(code), null, 'lobby code freed at game over');
+  const lobby = await store.loadLobby(code);
+  assert.equal(lobby?.gameId, gameId, 'lobby survives game over so a rematch keeps the session');
+});
+
+// ------------------------------------------------------------------
+// rematch
+// ------------------------------------------------------------------
+
+async function finishGame({ store, host, guest, gameId }) {
+  const socketFor = { A: host, B: guest };
+  for (let half = 0; half < 40; half++) {
+    const state = await store.loadState(gameId);
+    if (!state.gameActive) break;
+    await socketFor[actorSeat(state)].send('playCard', { gameId, index: 0, seq: state.seq });
+  }
+}
+
+test('rematch: refused while the game is in progress', async () => {
+  const { host, gameId } = await setupGame();
+  await host.send('requestRematch', { gameId });
+  assert.equal(host.last('errorState').code, 'cannotRematch');
+});
+
+test('rematch: first vote is mirrored to both seats, second vote restarts fresh', async () => {
+  const ctx = await setupGame();
+  const { store, now, host, guest, hostToken, guestToken, gameId, code } = ctx;
+  await finishGame(ctx);
+
+  // First vote (host): both panels learn about it, game stays finished.
+  await host.send('requestRematch', { gameId });
+  assert.deepEqual(host.last('gameState').rematch, { me: true, opponent: false });
+  assert.deepEqual(guest.last('gameState').rematch, { me: false, opponent: true });
+  let state = await store.loadState(gameId);
+  assert.equal(state.gameActive, false);
+  assert.equal(state.rematch.A, true);
+  assert.deepEqual(await store.listActiveMp(), [], 'not active again until both agree');
+
+  // Voting twice is idempotent.
+  await host.send('requestRematch', { gameId });
+  state = await store.loadState(gameId);
+  assert.equal(state.gameActive, false);
+
+  // Second vote (guest): fresh deal, same session plumbing.
+  await guest.send('requestRematch', { gameId });
+  const hostSnap = host.last('gameState');
+  const guestSnap = guest.last('gameState');
+  for (const snap of [hostSnap, guestSnap]) {
+    assert.equal(snap.gameId, gameId, 'same gameId — tokens stay valid');
+    assert.equal(snap.gameActive, true);
+    assert.equal(snap.seq, 0);
+    assert.equal(snap.playerPoints, 0);
+    assert.equal(snap.aiPoints, 0);
+    assert.equal(snap.playerHand.length, 3);
+    assert.equal(snap.deckCount, 33);
+    assert.equal(snap.gameOver, null);
+    assert.deepEqual(snap.rematch, { me: false, opponent: false });
+  }
+  assert.deepEqual(hostSnap.names, { me: 'Ana', opponent: 'Beto' });
+  assert.equal(hostSnap.myTurn, true, 'host leads the rematch');
+  assert.equal(guestSnap.myTurn, false);
+
+  state = await store.loadState(gameId);
+  assert.equal(state.turnDeadline, now() + 60_000, 'turn clock re-armed');
+  assert.deepEqual(await store.listActiveMp(), [gameId], 'back in the sweep index');
+  assert.deepEqual(await store.loadToken(hostToken), { kind: 'game', gameId, seat: 'A' });
+  assert.deepEqual(await store.loadToken(guestToken), { kind: 'game', gameId, seat: 'B' });
+  assert.equal((await store.loadLobby(code))?.gameId, gameId, 'lobby retained');
+
+  // The fresh game is playable.
+  await host.send('playCard', { gameId, index: 0, seq: 0 });
+  assert.equal((await store.loadState(gameId)).seq, 1);
+});
+
+test('rematch: a token reconnect mid-vote sees the pending request', async () => {
+  const ctx = await setupGame();
+  const { bind, host, guestToken, gameId } = ctx;
+  await finishGame(ctx);
+  await host.send('requestRematch', { gameId });
+
+  const fresh = bind();
+  await fresh.send('reconnectMultiplayerGame', { token: guestToken });
+  const snap = fresh.last('gameState');
+  assert.equal(snap.gameActive, false);
+  assert.deepEqual(snap.rematch, { me: false, opponent: true }, 'resumed seat sees the host vote');
 });
 
 test('endGame: refused while the opponent is still connected', async () => {

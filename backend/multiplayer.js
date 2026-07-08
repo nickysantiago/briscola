@@ -153,8 +153,10 @@ export function createMultiplayer({ store, now = Date.now, rng = Math.random, co
     armTurnTimer(state);
     await store.saveState(state);
     if (!state.gameActive) {
+      // Leave the sweep index, but KEEP the lobby: the session still owns its
+      // code while the players decide on a rematch. It is deleted on
+      // termination, or ages out with its TTL if simply abandoned.
       await store.removeActiveMp(state.gameId);
-      if (state.lobbyCode) await store.deleteLobby(state.lobbyCode);
     }
     const t = now();
     for (const seat of SEATS) {
@@ -181,7 +183,12 @@ export function createMultiplayer({ store, now = Date.now, rng = Math.random, co
     }
     await store.deleteGame(state.gameId);
     await store.removeActiveMp(state.gameId);
-    if (state.lobbyCode) await store.deleteLobby(state.lobbyCode);
+    if (state.lobbyCode) {
+      // Only delete the lobby if it still belongs to this session — its TTL
+      // may have lapsed and the code been re-claimed by strangers.
+      const lobby = await store.loadLobby(state.lobbyCode);
+      if (lobby && lobby.gameId === state.gameId) await store.deleteLobby(state.lobbyCode);
+    }
     seatSockets.delete(state.gameId);
     lastSeen.delete(state.gameId);
   }
@@ -382,6 +389,62 @@ export function createMultiplayer({ store, now = Date.now, rng = Math.random, co
   }
 
   // ------------------------------------------------------------------
+  // requestRematch {gameId} — post-game "play again" vote. When both seats
+  // have voted, the game restarts in place: a fresh deal under the SAME
+  // gameId, tokens, names and lobby, so nobody re-enters a code and both
+  // clients simply receive the new game's first snapshot.
+  // ------------------------------------------------------------------
+  async function handleRematch(socket) {
+    const session = sessions.get(socket.id);
+    if (!session || session.kind !== 'game') {
+      return sendError(socket, 'unknownGame', 'No saved game found.');
+    }
+    const { gameId, seat } = session;
+    return withLock(gameId, async () => {
+      const state = await loadGame(gameId);
+      if (!state) {
+        return sendError(socket, 'unknownGame', 'No saved game found.');
+      }
+      if (state.gameActive) {
+        return sendError(socket, 'cannotRematch', 'The game is still in progress.');
+      }
+      state.rematch = state.rematch ?? { A: false, B: false };
+      state.rematch[seat] = true;
+
+      if (state.rematch.A && state.rematch.B) {
+        // Both agreed: same seats, fresh deal.
+        const fresh = engineCreateMultiplayerGame({
+          gameId,
+          hostName: state.names.A,
+          guestName: state.names.B
+        });
+        fresh.lobbyCode = state.lobbyCode;
+        fresh.tokens = state.tokens;
+        fresh.turnDeadline = now() + cfg.TURN_MS;
+        await store.saveState(fresh);
+        await store.addActiveMp(gameId);
+        if (fresh.lobbyCode) {
+          // Refresh the lobby record so the code stays held for the new game.
+          const lobby = await store.loadLobby(fresh.lobbyCode);
+          if (lobby && lobby.gameId === gameId) await store.saveLobby(lobby);
+        }
+        const t = now();
+        for (const s of SEATS) {
+          emitToSeat(gameId, s, 'gameState', toSnapshot(fresh, s, t));
+        }
+        return;
+      }
+
+      // First vote: persist and let both panels re-render the pending state.
+      await store.saveState(state);
+      const t = now();
+      for (const s of SEATS) {
+        emitToSeat(gameId, s, 'gameState', toSnapshot(state, s, t));
+      }
+    });
+  }
+
+  // ------------------------------------------------------------------
   // Sweep: disconnect grace/flagging, 24h termination, turn-timeout autoplay.
   // Runs every SWEEP_INTERVAL_MS over the active-game index; each game is
   // handled under its lock so it cannot race a concurrent real move.
@@ -503,6 +566,7 @@ export function createMultiplayer({ store, now = Date.now, rng = Math.random, co
   const safeJoin = guarded('joinMultiplayerGame', handleJoin);
   const safeReconnect = guarded('reconnectMultiplayerGame', handleReconnect);
   const safeEndGame = guarded('endGame', handleEndGame);
+  const safeRematch = guarded('requestRematch', handleRematch);
   const safePlayCard = guarded('playCard', handlePlayCard);
 
   function bindConnection(socket) {
@@ -510,6 +574,7 @@ export function createMultiplayer({ store, now = Date.now, rng = Math.random, co
     socket.on('joinMultiplayerGame', (payload) => safeJoin(socket, payload));
     socket.on('reconnectMultiplayerGame', (payload) => safeReconnect(socket, payload));
     socket.on('endGame', (payload) => safeEndGame(socket, payload));
+    socket.on('requestRematch', (payload) => safeRematch(socket, payload));
     socket.on('disconnect', () => {
       const session = sessions.get(socket.id);
       sessions.delete(socket.id);

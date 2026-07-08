@@ -53,6 +53,8 @@ export interface Snapshot {
 	opponentDisconnected: boolean;
 	/** Epoch ms the abandoned game terminates at (24h after the disconnect). */
 	disconnectDeadline: number | null;
+	/** Post-game "play again" votes; both true restarts the game server-side. */
+	rematch: { me: boolean; opponent: boolean };
 }
 
 export interface TrickOutcome {
@@ -118,6 +120,8 @@ export interface ErrorState {
 		| 'lobbyCreateFailed'
 		| 'notYourTurn'
 		| 'cannotEndGame'
+		| 'cannotRematch'
+		| 'requestRematchFailed'
 		| 'createMultiplayerGameFailed'
 		| 'joinMultiplayerGameFailed'
 		| 'reconnectMultiplayerGameFailed'

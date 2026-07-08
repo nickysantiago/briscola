@@ -216,3 +216,7 @@ export function emitReconnectMultiplayerGame(token: string) {
 export function emitEndGame(gameId: string) {
 	socket?.emit('endGame', { gameId });
 }
+
+export function emitRequestRematch(gameId: string) {
+	socket?.emit('requestRematch', { gameId });
+}

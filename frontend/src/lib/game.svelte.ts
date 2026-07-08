@@ -115,6 +115,18 @@ export function clearGame() {
 	game.trick = null;
 }
 
+/**
+ * Walk away from the current multiplayer session: drop the seat token so it
+ * cannot hijack the next boot (the reported bug: a finished multiplayer game
+ * kept resuming over a newer solo game), clear the board, back to the title.
+ */
+export function leaveMultiplayer() {
+	clearStoredMpToken();
+	clearGame();
+	resetMp();
+	game.screen = 'title';
+}
+
 /** Reset the multiplayer session scaffolding (keeps `terminated` untouched). */
 export function resetMp() {
 	game.mp.code = null;

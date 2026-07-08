@@ -15,8 +15,10 @@
 
 	// An unfinished game can be resumed: the last settled snapshot is still
 	// active (the user came here via the home button, or a finished game shows
-	// Start only).
-	const canResume = $derived(!!game.view?.gameActive);
+	// Start only). With no view loaded (e.g. right after leaving a multiplayer
+	// session), a stored solo gameId is still worth offering — if it turns out
+	// expired, resume fails softly and clears it.
+	const canResume = $derived(!!game.view?.gameActive || (!game.view && !!getStoredGameId()));
 
 	function resumeGame() {
 		// A live multiplayer game resumes by seat token; solo by gameId.
