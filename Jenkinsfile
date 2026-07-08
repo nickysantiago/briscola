@@ -51,7 +51,7 @@ pipeline {
                 docker { 
                     image 'node:lts-slim'
                     // Keeps your npm cache persistent on the host
-                    args '-v /tmp/npm-cache:/root/.npm' 
+                    // args '-v /tmp/npm-cache:/root/.npm' 
                 }
             } 
             steps {
