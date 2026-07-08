@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { backOut } from 'svelte/easing';
 	import { fly } from 'svelte/transition';
-	import { game, startLoading } from '$lib/game.svelte';
+	import { clearStoredMpToken, game, startLoading } from '$lib/game.svelte';
 	import { emitNewGame } from '$lib/net';
 	import type { Difficulty } from '$lib/types';
 
@@ -12,6 +12,10 @@
 	];
 
 	function startNewGame(difficulty: Difficulty) {
+		// A stale multiplayer token (finished or abandoned session) must not
+		// hijack the next boot over this new solo game; only a LIVE multiplayer
+		// game keeps its token.
+		if (!(game.view?.mode === 'multi' && game.view.gameActive)) clearStoredMpToken();
 		game.busy = false;
 		startLoading();
 		emitNewGame(difficulty);

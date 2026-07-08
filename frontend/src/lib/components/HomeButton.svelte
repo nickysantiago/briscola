@@ -1,7 +1,18 @@
 <script lang="ts">
 	import { backOut } from 'svelte/easing';
 	import { scale } from 'svelte/transition';
-	import { game } from '$lib/game.svelte';
+	import { game, leaveMultiplayer } from '$lib/game.svelte';
+
+	// Leaving a FINISHED multiplayer game abandons the session (token dropped
+	// so it cannot hijack the next boot); a live one stays resumable.
+	function goHome() {
+		const v = game.view;
+		if (v?.mode === 'multi' && (!v.gameActive || v.gameOver !== null)) {
+			leaveMultiplayer();
+		} else {
+			game.screen = 'title';
+		}
+	}
 </script>
 
 {#if game.screen !== 'title' && !game.loading}
@@ -12,7 +23,7 @@
 			h-12 w-12 items-center justify-center rounded-full border-b-4 transition-all
 			duration-150 ease-out select-none hover:-translate-y-0.5 hover:brightness-105
 			active:translate-y-1 active:border-b-2 active:shadow-none landscape:right-[10%]"
-		onclick={() => (game.screen = 'title')}
+		onclick={goHome}
 	>
 		<svg
 			viewBox="0 0 24 24"

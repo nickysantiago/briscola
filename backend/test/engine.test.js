@@ -167,6 +167,8 @@ test('createMultiplayerGame: initial invariants', () => {
   assert.equal(s.seats.B.hand.length, 3);
   assert.equal(s.leader, 'A'); // host leads the first trick
   assert.equal(s.turnDeadline, null); // armed by the server layer, not the engine
+  assert.deepEqual(s.rematch, { A: false, B: false });
+  assert.deepEqual(toSnapshot(s, 'A').rematch, { me: false, opponent: false });
 });
 
 test('toSnapshot: hides private fields, exposes only counts', () => {

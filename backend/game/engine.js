@@ -60,7 +60,8 @@ function baseState(gameId) {
     turnDeadline: null,        // epoch ms; null = disarmed (solo, paused, or over)
     turnRemainingMs: null,     // stashed remaining time while paused by a disconnect
     disconnected: { A: null, B: null }, // grace-confirmed disconnect epoch ms per seat
-    disconnectDeadline: null   // earliest disconnect + 24h; restart-safe
+    disconnectDeadline: null,  // earliest disconnect + 24h; restart-safe
+    rematch: { A: false, B: false } // post-game "play again" votes; both true restarts
   };
 }
 
@@ -383,6 +384,7 @@ function toSnapshot(state, seat = 'A', now = Date.now()) {
   const opp = otherSeat(seat);
   const me = state.seats[seat];
   const them = state.seats[opp];
+  const rematch = state.rematch ?? { A: false, B: false }; // absent on pre-rematch v2 states
   return {
     gameId: state.gameId,
     mode: state.mode,
@@ -406,7 +408,8 @@ function toSnapshot(state, seat = 'A', now = Date.now()) {
     turnDeadline: state.turnDeadline,
     serverNow: now,
     opponentDisconnected: !!state.disconnected[opp],
-    disconnectDeadline: state.disconnectDeadline
+    disconnectDeadline: state.disconnectDeadline,
+    rematch: { me: !!rematch[seat], opponent: !!rematch[opp] }
   };
 }
 
