@@ -38,6 +38,9 @@ pipeline {
                     image 'node:lts-slim' 
                 } 
             }
+            environment { 
+                npm_config_cache = "${WORKSPACE}/.npm-cache" 
+            }
             steps {
                 echo "Running npm ci"
                 dir('backend') {
@@ -54,6 +57,9 @@ pipeline {
                     // args '-v /tmp/npm-cache:/root/.npm' 
                 }
             } 
+            environment { 
+                npm_config_cache = "${WORKSPACE}/.npm-cache" 
+            }
             steps {
                 echo "Running Lint..."
                 dir('backend') {
