@@ -16,7 +16,7 @@ pipeline {
         // DEPLOY_HOST = 'jenkins@192.168.0.101'
         // SSH_CRED    = '96f5c053-7651-404f-8379-5db4d3ecf58f'
         // COMPOSE_DIR = '/home/jenkins/workspace/brisca_home'
-        SNYK_TOKEN = credentials('61896d27-9426-4a15-8a44-1a79dd478a8a')
+        SNYK_TOKEN = credentials('93fe8132-018b-4ac0-89b3-20ac0c38f346')
     }
 
     triggers {
