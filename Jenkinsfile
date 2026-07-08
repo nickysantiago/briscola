@@ -13,9 +13,10 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     environment {
-        DEPLOY_HOST = 'jenkins@192.168.0.101'
-        SSH_CRED    = '96f5c053-7651-404f-8379-5db4d3ecf58f'
-        COMPOSE_DIR = '/home/jenkins/workspace/brisca_home'
+        // DEPLOY_HOST = 'jenkins@192.168.0.101'
+        // SSH_CRED    = '96f5c053-7651-404f-8379-5db4d3ecf58f'
+        // COMPOSE_DIR = '/home/jenkins/workspace/brisca_home'
+        SNYK_TOKEN = credentials('61896d27-9426-4a15-8a44-1a79dd478a8a')
     }
 
     triggers {
@@ -69,8 +70,16 @@ pipeline {
         } 
 
         stage('Backend: SAST') {  // Snyk Code
+            agent {
+                docker { 
+                    image 'snyk/snyk:node'
+                }
+            } 
             steps {
-                echo "Running SAST scan..."
+                echo "Running Snyk Code Test..."
+                dir('backend') {
+                    sh 'snyk code test'
+                }
             }
         } 
 
