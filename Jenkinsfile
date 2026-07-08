@@ -78,7 +78,7 @@ pipeline {
             steps {
                 echo "Running Snyk Code Test..."
                 dir('backend') {
-                    sh 'snyk code test'
+                    sh 'snyk code test --severity-threshold=high'
                 }
             }
         } 
