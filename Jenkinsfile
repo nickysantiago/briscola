@@ -10,7 +10,7 @@
 // if the home server has the Compose v2 plugin.
 
 pipeline {
-    agent any
+    agent { label 'jenkins-agent' }
 
     environment {
         DEPLOY_HOST = 'jenkins@192.168.0.101'
@@ -32,20 +32,49 @@ pipeline {
             }
         }
 
-        stage('Lint & SAST') {  // Snyk Code
+        stage('Backend: Install') {
+            agent { 
+                docker { 
+                    image 'node:lts-slim' 
+                } 
+            }
+            steps {
+                echo "Running npm ci"
+                dir('backend') {
+                    sh 'npm ci'
+                }
+            }
+        }
+
+        stage('Backend: Lint') { 
+            agent {
+                docker { 
+                    image 'node:lts-slim'
+                    // Keeps your npm cache persistent on the host
+                    args '-v /tmp/npm-cache:/root/.npm' 
+                }
+            } 
             steps {
                 echo "Running Lint..."
+                dir('backend') {
+                    sh 'npm run lint'
+                }
+            }
+        } 
+
+        stage('Backend: SAST') {  // Snyk Code
+            steps {
                 echo "Running SAST scan..."
             }
         } 
 
-        stage('Build') {
+        stage('Backend: Build') {
             steps {
                 echo "Building..."
             }
         }
 
-        stage('Dependency Scan') { // Snyk Test
+        stage('Backend: Dependency Scan') { // Snyk Test
             steps {
                 echo "Running snyk test scan..."
             }
