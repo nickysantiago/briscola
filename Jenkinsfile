@@ -13,9 +13,6 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     environment {
-        // DEPLOY_HOST = 'jenkins@192.168.0.101'
-        // SSH_CRED    = '96f5c053-7651-404f-8379-5db4d3ecf58f'
-        // COMPOSE_DIR = '/home/jenkins/workspace/brisca_home'
         SNYK_TOKEN = credentials('93fe8132-018b-4ac0-89b3-20ac0c38f346')
     }
 
@@ -125,7 +122,13 @@ pipeline {
             steps {
                 echo "Running Unit Testing..."
                 dir('backend') {
-                    sh 'npm test'
+                    sh 'npm test > test-coverage-report.txt'
+                }
+            }
+            post {
+                always {
+                    // Archive the report from the 'backend' directory so it's saved to the build
+                    archiveArtifacts artifacts: 'backend/test-coverage-report.txt', allowEmptyArchive: true
                 }
             }
         }
