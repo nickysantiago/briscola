@@ -69,7 +69,7 @@ pipeline {
             }
         } 
 
-        stage('Backend: SAST') {  // Snyk Code
+        stage('Backend: SAST Scan') {  // Snyk Code
             agent {
                 docker { 
                     image 'snyk/snyk:node'
@@ -89,7 +89,7 @@ pipeline {
             }
         }
 
-        stage('Backend: Dependency Scan') { // Snyk Test
+        stage('Backend: SCA Scan') { // Snyk Test
             agent {
                 docker {
                     image 'snyk/snyk:node'
@@ -103,13 +103,13 @@ pipeline {
             }
         }
         
-        stage('Unit Test') {
+        stage('Backend: Unit Test') {
             steps {
                 echo "Running Unit Testing..."
             }
         }
 
-        stage('Push Artifacts') { 
+        stage('Backend: Push Artifacts') { 
             steps {
                 echo "Pushing Artifacts to Nexus..."
             }
