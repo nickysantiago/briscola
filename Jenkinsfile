@@ -76,7 +76,13 @@ pipeline {
             steps {
                 echo "Running Snyk Code Test..."
                 dir('backend') {
-                    sh 'snyk code test --severity-threshold=high'
+                    sh 'snyk code test --severity-threshold=high --json > snyk-sast-report.json'
+                }
+            }
+            post {
+                always {
+                    // Archive the report from the 'backend' directory so it's saved to the build
+                    archiveArtifacts artifacts: 'backend/snyk-sast-report.json', allowEmptyArchive: true
                 }
             }
         } 
@@ -96,7 +102,13 @@ pipeline {
             steps {
                 echo "Running Snyk Test Scan..."
                 dir('backend') {
-                    sh 'snyk test --severity-threshold=high'
+                    sh 'snyk test --severity-threshold=high --json > snyk-sca-report.json'
+                }
+            }
+            post {
+                always {
+                    // Archive the report from the 'backend' directory so it's saved to the build
+                    archiveArtifacts artifacts: 'backend/snyk-sca-report.json', allowEmptyArchive: true
                 }
             }
         }
