@@ -90,14 +90,14 @@ pipeline {
             }
         }
 
-        stage('Backend: SCA Scan and SBOM') { // Snyk Test
+        stage('Backend: SCA Scan') { // Snyk Test
             agent {
                 docker {
                     image 'snyk/snyk:node'
                 }
             }
             steps {
-                echo "Running Snyk Test Scan and SBOM..."
+                echo "Running Snyk Test Scan..."
                 dir('backend') {
                     sh 'snyk test --severity-threshold=high --json > snyk-sca-report.json'
                     sh 'snyk sbom --format=cyclonedx1.4+json > sbom-backend.json'
@@ -107,6 +107,26 @@ pipeline {
                 always {
                     // Archive the report from the 'backend' directory so it's saved to the build
                     archiveArtifacts artifacts: 'backend/snyk-sca-report.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'backend/sbom-backend.json', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Backend: Generate SBOM') {
+            steps {
+                dir('backend') {
+                    sh '''
+                        docker run --rm \
+                            -u 0 \
+                            -v "$(pwd)":/src \
+                            -w /src \
+                            anchore/syft:latest \
+                            scan dir:. -o cyclonedx-json=sbom-backend.json
+                    '''
+                }
+            }
+            post {
+                always {
                     archiveArtifacts artifacts: 'backend/sbom-backend.json', allowEmptyArchive: true
                 }
             }
