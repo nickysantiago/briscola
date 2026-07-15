@@ -54,8 +54,6 @@ pipeline {
             agent {
                 docker { 
                     image 'node:lts-slim'
-                    // Keeps your npm cache persistent on the host
-                    // args '-v /tmp/npm-cache:/root/.npm' 
                 }
             } 
             environment { 
@@ -104,8 +102,19 @@ pipeline {
         }
         
         stage('Backend: Unit Test') {
+            agent {
+                docker { 
+                    image 'node:lts-slim'
+                }
+            } 
+            environment { 
+                npm_config_cache = "${WORKSPACE}/.npm-cache" 
+            }
             steps {
                 echo "Running Unit Testing..."
+                dir('backend') {
+                    sh 'npm test'
+                }
             }
         }
 
