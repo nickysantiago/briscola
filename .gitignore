@@ -2,6 +2,10 @@
 node_modules/
 backend/node_modules/
 
+# SvelteKit build output / caches
+frontend/.svelte-kit/
+frontend/build/
+
 # Environment / secrets
 .env
 *.local

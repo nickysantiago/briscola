@@ -4,6 +4,12 @@
 // singletons, no DOM, no timers). The state is fully JSON-serializable so it
 // can be persisted to Redis verbatim.
 //
+// The state is a symmetric two-seat model (seats A and B). Solo mode is
+// "seat B is bot-controlled" (state.botSeat === 'B'): the same trick
+// resolution, scoring and draw logic serves both single-player-vs-AI and
+// human-vs-human games. A trick is two half-moves: the leader's card sits in
+// state.pendingCard until the other seat responds.
+//
 // Card shape: { suit: string, value: number }
 
 import { SUITS, VALUES, VALUE_POINTS, RANK_MAP, INITIAL_HAND_SIZE } from './constants.js';
@@ -11,41 +17,78 @@ import { chooseAiCard } from './ai.js';
 
 const DIFFICULTIES = ['easy', 'normal', 'hard'];
 
+// Persisted-state format version. States written before the two-seat model
+// (no stateVersion field) are not loadable; the server treats them as unknown.
+const STATE_VERSION = 2;
+
+const otherSeat = (seat) => (seat === 'A' ? 'B' : 'A');
+
+// The seat that must act next: the leader while no card is on the table,
+// otherwise the follower.
+const actorSeat = (state) =>
+  state.pendingCard === null ? state.leader : otherSeat(state.leader);
+
 // ------------------------------------------------------------------
 // State construction
 // ------------------------------------------------------------------
 
-// Create a fresh game state: shuffled deck, both hands dealt, trump drawn.
-// The human always leads the first trick.
-function createGame(difficulty, gameId) {
-  const diff = DIFFICULTIES.includes(difficulty) ? difficulty : 'normal';
-
-  const state = {
+function baseState(gameId) {
+  return {
+    stateVersion: STATE_VERSION,
     gameId,
-    difficulty: diff,
+    mode: 'solo',        // 'solo' | 'multi'
+    botSeat: null,       // 'B' in solo, null in multi
+    difficulty: null,    // solo only
     gameActive: true,
-    seq: 0,              // turn token; incremented after every resolved trick
+    seq: 0,              // turn token; incremented on every half-move
     deck: [],
-    playerHand: [],
-    aiHand: [],
-    playerPoints: 0,
-    aiPoints: 0,
     trumpCard: null,
     trumpSuit: '',       // captured once at deal; rules read this, never trumpCard.suit
     trumpTaken: false,   // becomes true when the trump is picked up on the deck===1 trick
-    playerLeads: true,
-    currentAiCard: null, // set while the AI has led and awaits the human's response
-    playerWonCards: [],
-    aiWonCards: [],
-    allPlayedCards: [],  // AI card-counting history (both cards of every resolved trick)
-    playerVoidSuits: []  // suits the player failed to follow; an array so it serializes cleanly
+    leader: 'A',         // seat leading the current trick
+    pendingCard: null,   // the leader's card while awaiting the follower's response
+    seats: {
+      A: { hand: [], points: 0, wonCards: [], voidSuits: [] },
+      B: { hand: [], points: 0, wonCards: [], voidSuits: [] }
+    },
+    allPlayedCards: [],  // card-counting history (both cards of every resolved trick)
+    // Multiplayer session fields (written by the server layer, persisted along
+    // with the rules state; all inert in solo mode).
+    names: null,               // { A, B } display names
+    tokens: null,              // { A, B } per-seat reconnect tokens; never in snapshots
+    lobbyCode: null,
+    turnDeadline: null,        // epoch ms; null = disarmed (solo, paused, or over)
+    turnRemainingMs: null,     // stashed remaining time while paused by a disconnect
+    disconnected: { A: null, B: null }, // grace-confirmed disconnect epoch ms per seat
+    disconnectDeadline: null,  // earliest disconnect + 24h; restart-safe
+    rematch: { A: false, B: false } // post-game "play again" votes; both true restarts
   };
+}
 
+function dealNewGame(state) {
   shuffleDeck(state);
   dealInitialHands(state);
   state.trumpCard = drawCard(state);
   state.trumpSuit = state.trumpCard.suit;
+}
 
+// Create a fresh solo game: shuffled deck, both hands dealt, trump drawn.
+// The human (seat A) always leads the first trick.
+function createGame(difficulty, gameId) {
+  const state = baseState(gameId);
+  state.difficulty = DIFFICULTIES.includes(difficulty) ? difficulty : 'normal';
+  state.botSeat = 'B';
+  dealNewGame(state);
+  return state;
+}
+
+// Create a fresh two-human game. The host (seat A) leads the first trick.
+// Pure: no clock reads; the server layer arms turnDeadline and sets tokens.
+function createMultiplayerGame({ gameId, hostName, guestName }) {
+  const state = baseState(gameId);
+  state.mode = 'multi';
+  state.names = { A: hostName, B: guestName };
+  dealNewGame(state);
   return state;
 }
 
@@ -71,12 +114,14 @@ function drawCard(state) {
   return state.deck.length ? state.deck.pop() : null;
 }
 
+// Seat A receives the first card of each round, matching the original
+// player-then-AI deal order (part of the golden-master RNG contract).
 function dealInitialHands(state) {
-  state.playerHand = [];
-  state.aiHand = [];
+  state.seats.A.hand = [];
+  state.seats.B.hand = [];
   for (let i = 0; i < INITIAL_HAND_SIZE; i++) {
-    state.playerHand.push(drawCard(state));
-    state.aiHand.push(drawCard(state));
+    state.seats.A.hand.push(drawCard(state));
+    state.seats.B.hand.push(drawCard(state));
   }
 }
 
@@ -88,218 +133,297 @@ function getCardRank(card) {
   return RANK_MAP[card.value];
 }
 
-// Decide the winner of a two-card trick. Reads state.trumpSuit (never
-// state.trumpCard.suit) and state.playerLeads to know the lead suit. Must be
-// called while state.playerLeads still reflects THIS trick's leader.
-function determineWinner(state, playerCard, aiCard) {
+// Decide the winning seat of a two-card trick. Reads state.trumpSuit (never
+// state.trumpCard.suit) and state.leader to know the lead suit. Must be called
+// while state.leader still reflects THIS trick's leader.
+function determineWinner(state, cards) {
   const trumpSuit = state.trumpSuit;
-  const leadSuit = state.playerLeads ? playerCard.suit : aiCard.suit;
+  const leader = state.leader;
+  const follower = otherSeat(leader);
+  const leadCard = cards[leader];
+  const followCard = cards[follower];
 
   // Both played trump suit
-  if (playerCard.suit === trumpSuit && aiCard.suit === trumpSuit) {
-    return getCardRank(playerCard) > getCardRank(aiCard) ? 'player' : 'ai';
+  if (leadCard.suit === trumpSuit && followCard.suit === trumpSuit) {
+    return getCardRank(leadCard) > getCardRank(followCard) ? leader : follower;
   }
-  // Only player played trump
-  if (playerCard.suit === trumpSuit) {
-    return 'player';
+  // Only one side trumped
+  if (leadCard.suit === trumpSuit) return leader;
+  if (followCard.suit === trumpSuit) return follower;
+  // Nobody played trump - higher card of the lead suit wins; a follower who
+  // broke suit (and didn't trump) loses to the leader.
+  if (followCard.suit === leadCard.suit) {
+    return getCardRank(leadCard) > getCardRank(followCard) ? leader : follower;
   }
-  // Only AI played trump
-  if (aiCard.suit === trumpSuit) {
-    return 'ai';
-  }
-  // Nobody played trump - higher card of the lead suit wins
-  if (state.playerLeads) {
-    if (aiCard.suit === leadSuit) {
-      return getCardRank(playerCard) > getCardRank(aiCard) ? 'player' : 'ai';
+  return leader;
+}
+
+// Observe void: when the follower fails to follow the lead suit, record it
+// against the follower (used by hard-mode AI inference on seat A's voids).
+// Must run before the bot computes its next lead so hard mode can use the
+// fresh inference.
+function recordVoidIfBroke(state, followerSeat, followCard, leadCard) {
+  if (followCard.suit !== leadCard.suit) {
+    const voids = state.seats[followerSeat].voidSuits;
+    if (!voids.includes(leadCard.suit)) {
+      voids.push(leadCard.suit);
     }
-    return 'player'; // AI didn't follow suit and didn't trump
-  } else {
-    if (playerCard.suit === leadSuit) {
-      return getCardRank(playerCard) > getCardRank(aiCard) ? 'player' : 'ai';
-    }
-    return 'ai'; // Player didn't follow suit and didn't trump
   }
 }
 
-// Record that the player is void in a suit (used by hard-mode AI inference).
-function markPlayerVoid(state, suit) {
-  if (!state.playerVoidSuits.includes(suit)) {
-    state.playerVoidSuits.push(suit);
-  }
+// Store the just-completed trick for the winner's display pile (which shows
+// only the most recent trick) AND append both cards to the card-counting
+// history. The history push order is seat A then seat B, always — hard mode's
+// deterministic seeding hashes this sequence, so it must stay stable.
+function recordTrick(state, winner, cards) {
+  state.seats[winner].wonCards = [cards[winner], cards[otherSeat(winner)]];
+  if (cards.A) state.allPlayedCards.push(cards.A);
+  if (cards.B) state.allPlayedCards.push(cards.B);
 }
 
-// Observe void: only when the human is RESPONDING (aiCard is the lead) and they
-// fail to follow the lead suit. Must run before the AI computes its next lead so
-// hard mode can use the fresh inference.
-function recordVoidIfBroke(state, playerCard, aiCard) {
-  if (playerCard.suit !== aiCard.suit) {
-    markPlayerVoid(state, aiCard.suit);
-  }
-}
-
-// Store the just-completed trick for the winner's display pile (which shows only
-// the most recent trick) AND append both cards to the card-counting history.
-function recordTrick(state, winner, playerCard, aiCard) {
-  if (winner === 'player') {
-    state.playerWonCards = [playerCard, aiCard];
-  } else {
-    state.aiWonCards = [playerCard, aiCard];
-  }
-  if (playerCard) state.allPlayedCards.push(playerCard);
-  if (aiCard) state.allPlayedCards.push(aiCard);
-}
-
-// Draw cards after a trick. The trick WINNER draws first. On the deck===1 trick
-// the winner takes the last deck card and the LOSER picks up the trump (the
-// trumpCard object is kept intact for display; only trumpTaken flips).
-// Returns what to tell the client to animate: the human's own draw plus a count
-// bump for the AI — the AI's drawn card is never revealed.
+// Draw cards after a trick. The trick WINNER draws first. On the deck===1
+// trick the winner takes the last deck card and the LOSER picks up the trump
+// (the trumpCard object is kept intact for display; only trumpTaken flips).
+// Returns { A: Card|null, B: Card|null, trumpPickedUp } — what each seat drew.
 function drawLogic(state, winner) {
-  const winnerIsPlayer = winner === 'player';
-  let playerDraw = null;
-  let aiDrew = false;
-  let trumpPickedUp = false;
+  const loser = otherSeat(winner);
+  const draws = { A: null, B: null, trumpPickedUp: false };
 
   if (state.deck.length >= 2) {
-    if (winnerIsPlayer) {
-      playerDraw = drawCard(state);
-      state.playerHand.push(playerDraw);
-      state.aiHand.push(drawCard(state));
-      aiDrew = true;
-    } else {
-      state.aiHand.push(drawCard(state));
-      aiDrew = true;
-      playerDraw = drawCard(state);
-      state.playerHand.push(playerDraw);
-    }
+    draws[winner] = drawCard(state);
+    state.seats[winner].hand.push(draws[winner]);
+    draws[loser] = drawCard(state);
+    state.seats[loser].hand.push(draws[loser]);
   } else if (state.deck.length === 1) {
-    trumpPickedUp = true;
+    draws.trumpPickedUp = true;
     state.trumpTaken = true;
-    if (winnerIsPlayer) {
-      playerDraw = drawCard(state);          // winner draws the last deck card
-      state.playerHand.push(playerDraw);
-      state.aiHand.push(state.trumpCard);   // loser picks up the trump
-      aiDrew = true;
-    } else {
-      state.aiHand.push(drawCard(state));   // winner draws the last deck card
-      aiDrew = true;
-      playerDraw = state.trumpCard;          // loser picks up the trump
-      state.playerHand.push(state.trumpCard);
-    }
+    draws[winner] = drawCard(state);           // winner draws the last deck card
+    state.seats[winner].hand.push(draws[winner]);
+    draws[loser] = state.trumpCard;            // loser picks up the trump
+    state.seats[loser].hand.push(state.trumpCard);
   }
   // deck empty: no draws
 
-  return { player: playerDraw, aiDrew, trumpPickedUp };
+  return draws;
 }
 
 function computeGameOver(state) {
-  const winner =
-    state.playerPoints > state.aiPoints ? 'player' :
-    state.playerPoints < state.aiPoints ? 'ai' : 'tie';
+  const a = state.seats.A.points;
+  const b = state.seats.B.points;
   return {
-    winner,
-    playerPoints: state.playerPoints,
-    aiPoints: state.aiPoints,
-    difficulty: state.difficulty
+    winner: a > b ? 'A' : a < b ? 'B' : 'tie',
+    points: { A: a, B: b }
   };
 }
 
 // ------------------------------------------------------------------
-// The single orchestrator the socket layer calls for a human action.
-// Resolves a full trick atomically and returns a timing-free description the
-// client animates. Mutates `state` in place.
+// Half-move primitives. applyMove() is the public entry the server calls for
+// ANY seat's action; commitLead/commitResponse are the internal halves (also
+// driven directly for the bot, whose card is already spliced by the AI).
+// Both mutate `state` in place and bump seq.
 // ------------------------------------------------------------------
-function applyPlayerMove(state, index) {
+
+// MoveResult:
+//   { kind: 'led', seat, card }                       — trick awaits the follower
+//   { kind: 'resolved', leader, cards: {A,B}, winner, trickPoints,
+//     draws: {A,B,trumpPickedUp}, gameOver: {winner,points}|null }
+function applyMove(state, seat, index) {
   if (!state.gameActive) throw new Error('game is not active');
-  if (!Number.isInteger(index) || index < 0 || index >= state.playerHand.length) {
+  if (seat !== 'A' && seat !== 'B') throw new Error('invalid seat');
+  if (actorSeat(state) !== seat) throw new Error('not this seat\'s turn');
+  const hand = state.seats[seat].hand;
+  if (!Number.isInteger(index) || index < 0 || index >= hand.length) {
     throw new Error('invalid card index');
   }
+  const card = hand.splice(index, 1)[0];
+  return state.pendingCard === null
+    ? commitLead(state, seat, card)
+    : commitResponse(state, seat, card);
+}
 
-  const humanLed = state.playerLeads;
-  const playerCard = state.playerHand.splice(index, 1)[0];
+function commitLead(state, seat, card) {
+  state.pendingCard = card;
+  state.seq++;
+  return { kind: 'led', seat, card };
+}
 
-  // Determine the AI's card for THIS trick.
-  let aiCard;
-  if (humanLed) {
-    aiCard = chooseAiCard(state, playerCard); // AI responds (splices from aiHand)
-  } else {
-    aiCard = state.currentAiCard;             // AI already led; resolve against it
-    recordVoidIfBroke(state, playerCard, aiCard);
-  }
+function commitResponse(state, followerSeat, card) {
+  const leader = state.leader;
+  const cards = { [leader]: state.pendingCard, [followerSeat]: card };
 
-  // Resolve (determineWinner must run before playerLeads is mutated).
-  const winner = determineWinner(state, playerCard, aiCard);
-  const trickPoints = (VALUE_POINTS[playerCard.value] || 0) + (VALUE_POINTS[aiCard.value] || 0);
-  if (winner === 'player') {
-    state.playerPoints += trickPoints;
-  } else {
-    state.aiPoints += trickPoints;
-  }
-  state.playerLeads = winner === 'player';
+  recordVoidIfBroke(state, followerSeat, card, state.pendingCard);
 
-  recordTrick(state, winner, playerCard, aiCard);
+  // Resolve (determineWinner must run before state.leader is mutated).
+  const winner = determineWinner(state, cards);
+  const trickPoints = (VALUE_POINTS[cards.A.value] || 0) + (VALUE_POINTS[cards.B.value] || 0);
+  state.seats[winner].points += trickPoints;
+  state.leader = winner;
+  state.pendingCard = null;
 
-  // Draw (winner first) — must precede the AI's next lead.
+  recordTrick(state, winner, cards);
+
+  // Draw (winner first) — must precede any bot follow-up lead.
   const draws = drawLogic(state, winner);
 
-  state.currentAiCard = null;
-
   let gameOver = null;
-  let aiLead = null;
-  if (state.playerHand.length === 0 && state.aiHand.length === 0) {
+  if (state.seats.A.hand.length === 0 && state.seats.B.hand.length === 0) {
     state.gameActive = false;
     gameOver = computeGameOver(state);
-  } else if (winner === 'ai') {
-    // The AI won, so it leads the next trick. state.playerLeads is already false,
-    // so the AI knows it is leading. Void/draw are already applied above.
-    aiLead = chooseAiCard(state, null); // splices from aiHand
-    state.currentAiCard = aiLead;
   }
 
   state.seq++;
 
+  return { kind: 'resolved', leader, cards, winner, trickPoints, draws, gameOver };
+}
+
+// ------------------------------------------------------------------
+// Bot adapter: ai.js was written against the original asymmetric field names
+// and is kept byte-identical (its deterministic seeding hashes exact field
+// values). This view maps the seat state onto those names with SHARED array
+// references — chooseAiCard splices state.seats.B.hand through view.aiHand.
+// ------------------------------------------------------------------
+function botView(state) {
+  const bot = state.seats.B;
+  const human = state.seats.A;
+  return {
+    difficulty: state.difficulty,
+    trumpSuit: state.trumpSuit,
+    trumpCard: state.trumpCard,
+    trumpTaken: state.trumpTaken,
+    deck: state.deck,
+    allPlayedCards: state.allPlayedCards,
+    aiHand: bot.hand,
+    playerHand: human.hand,
+    aiPoints: bot.points,
+    playerPoints: human.points,
+    playerLeads: state.leader === 'A',
+    playerVoidSuits: human.voidSuits
+  };
+}
+
+// ------------------------------------------------------------------
+// The solo orchestrator the socket layer calls for a human action. Resolves a
+// full trick atomically (driving the bot's response and, if the bot wins, its
+// next lead) and returns a timing-free description the client animates.
+// Return shape is the original single-player contract. Mutates `state`.
+// ------------------------------------------------------------------
+function applyPlayerMove(state, index) {
+  const humanLed = state.pendingCard === null;
+
+  let res;
+  if (humanLed) {
+    const led = applyMove(state, 'A', index);
+    const aiCard = chooseAiCard(botView(state), led.card); // bot responds (splices its hand)
+    res = commitResponse(state, 'B', aiCard);
+  } else {
+    res = applyMove(state, 'A', index); // bot already led; resolve against pendingCard
+  }
+
+  let aiLead = null;
+  if (res.winner === 'B' && state.gameActive) {
+    // The bot won, so it leads the next trick. Void/draw are already applied.
+    aiLead = chooseAiCard(botView(state), null); // splices its hand
+    commitLead(state, 'B', aiLead);
+  }
+
   return {
     humanLed,
-    playerCard,
-    aiCard,
-    winner,
-    trickPoints,
-    draws,
-    gameOver,
+    playerCard: res.cards.A,
+    aiCard: res.cards.B,
+    winner: res.winner === 'A' ? 'player' : 'ai',
+    trickPoints: res.trickPoints,
+    draws: { player: res.draws.A, aiDrew: res.draws.B !== null, trumpPickedUp: res.draws.trumpPickedUp },
+    gameOver: projectGameOver(res.gameOver, 'A', state),
     aiLead: aiLead ? { card: aiLead } : null
   };
 }
 
 // ------------------------------------------------------------------
-// Public, anti-cheat projection sent to the browser. Never includes aiHand or
-// deck contents (only counts), nor the AI's private inference state, so the
-// opponent cannot be read from devtools.
+// Seat-relative projections. The wire format keeps the original field names
+// ("player" = the receiving seat, "ai" = its opponent) so the client renders
+// solo and multiplayer games identically.
 // ------------------------------------------------------------------
-function toSnapshot(state) {
+
+function projectGameOver(gameOver, seat, state) {
+  if (!gameOver) return null;
+  const opp = otherSeat(seat);
+  return {
+    winner: gameOver.winner === 'tie' ? 'tie' : gameOver.winner === seat ? 'player' : 'ai',
+    playerPoints: gameOver.points[seat],
+    aiPoints: gameOver.points[opp],
+    difficulty: state.difficulty
+  };
+}
+
+// Seat-relative projection of a resolved MoveResult, for multiplayer where
+// each seat animates the same trick from its own side.
+function outcomeFor(result, seat, state) {
+  const opp = otherSeat(seat);
+  return {
+    humanLed: result.leader === seat,
+    playerCard: result.cards[seat],
+    aiCard: result.cards[opp],
+    winner: result.winner === seat ? 'player' : 'ai',
+    trickPoints: result.trickPoints,
+    draws: {
+      player: result.draws[seat],
+      aiDrew: result.draws[opp] !== null,
+      trumpPickedUp: result.draws.trumpPickedUp
+    },
+    gameOver: projectGameOver(result.gameOver, seat, state),
+    aiLead: null
+  };
+}
+
+// ------------------------------------------------------------------
+// Public, anti-cheat projection sent to the browser. Never includes the
+// opponent's hand or deck contents (only counts), nor private inference or
+// session secrets (tokens), so the opponent cannot be read from devtools.
+// ------------------------------------------------------------------
+function toSnapshot(state, seat = 'A', now = Date.now()) {
+  const opp = otherSeat(seat);
+  const me = state.seats[seat];
+  const them = state.seats[opp];
+  const rematch = state.rematch ?? { A: false, B: false }; // absent on pre-rematch v2 states
   return {
     gameId: state.gameId,
+    mode: state.mode,
     difficulty: state.difficulty,
     gameActive: state.gameActive,
     seq: state.seq,
-    playerHand: state.playerHand,
-    aiHandCount: state.aiHand.length,
+    playerHand: me.hand,
+    aiHandCount: them.hand.length,
     deckCount: state.deck.length,
     trumpCard: state.trumpCard,
-    playerPoints: state.playerPoints,
-    aiPoints: state.aiPoints,
-    playerLeads: state.playerLeads,
-    currentAiCard: state.currentAiCard,
-    playerWonCards: state.playerWonCards,
-    aiWonCards: state.aiWonCards,
-    gameOver: state.gameActive ? null : computeGameOver(state)
+    playerPoints: me.points,
+    aiPoints: them.points,
+    playerLeads: state.leader === seat,
+    currentAiCard: state.pendingCard !== null && state.leader === opp ? state.pendingCard : null,
+    myPendingCard: state.pendingCard !== null && state.leader === seat ? state.pendingCard : null,
+    myTurn: state.gameActive && actorSeat(state) === seat,
+    playerWonCards: me.wonCards,
+    aiWonCards: them.wonCards,
+    gameOver: state.gameActive ? null : projectGameOver(computeGameOver(state), seat, state),
+    names: state.names ? { me: state.names[seat], opponent: state.names[opp] } : null,
+    turnDeadline: state.turnDeadline,
+    serverNow: now,
+    opponentDisconnected: !!state.disconnected[opp],
+    disconnectDeadline: state.disconnectDeadline,
+    rematch: { me: !!rematch[seat], opponent: !!rematch[opp] }
   };
 }
 
 export {
+  STATE_VERSION,
+  otherSeat,
+  actorSeat,
   createGame,
+  createMultiplayerGame,
   getCardRank,
   determineWinner,
   drawLogic,
+  applyMove,
   applyPlayerMove,
+  outcomeFor,
   toSnapshot
 };

@@ -72,7 +72,7 @@ async function main() {
   // 2. Play three moves.
   for (let i = 0; i < 3; i++) {
     const { outcome, state } = await playCard(s, gameId, 0, snap.seq);
-    assert.equal(state.seq, snap.seq + 1, 'seq advances by 1');
+    assert.ok(state.seq > snap.seq, 'seq advances'); // per half-move: 2-3 per solo trick
     assert.equal(typeof outcome.winner, 'string');
     snap = state;
   }
