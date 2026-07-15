@@ -85,13 +85,21 @@ pipeline {
 
         stage('Backend: Build') {
             steps {
-                echo "Building..."
+                echo "Building backend... actually nothing to build here - move on"
             }
         }
 
         stage('Backend: Dependency Scan') { // Snyk Test
+            agent {
+                docker {
+                    image 'snyk/snyk:node'
+                }
+            }
             steps {
-                echo "Running snyk test scan..."
+                echo "Running Snyk Test Scan..."
+                dir('backend') {
+                    sh 'snyk test --severity-threshold=high'
+                }
             }
         }
         
