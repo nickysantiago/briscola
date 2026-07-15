@@ -100,14 +100,12 @@ pipeline {
                 echo "Running Snyk Test Scan..."
                 dir('backend') {
                     sh 'snyk test --severity-threshold=high --json > snyk-sca-report.json'
-                    sh 'snyk sbom --format=cyclonedx1.4+json > sbom-backend.json'
                 }
             }
             post {
                 always {
                     // Archive the report from the 'backend' directory so it's saved to the build
                     archiveArtifacts artifacts: 'backend/snyk-sca-report.json', allowEmptyArchive: true
-                    archiveArtifacts artifacts: 'backend/sbom-backend.json', allowEmptyArchive: true
                 }
             }
         }
