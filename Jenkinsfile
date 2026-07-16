@@ -156,6 +156,30 @@ pipeline {
         stage('Backend: Push Artifacts') { 
             steps {
                 echo "Pushing Artifacts to Nexus..."
+
+                nexusArtifactUploader(
+                    nexusVersion: '',
+                    protocol: 'http',
+                    nexusUrl: '',
+                    groupId: '',
+                    version: '',
+                    repository: '',
+                    credentialsId: 'nexus-jenkins',
+                    artifacts: [
+                        [
+                            artifactId: '',
+                            classifier: '',
+                            file: '',
+                            type: ''
+                        ],
+                        [
+                            artifactId: '',
+                            classifier: '',
+                            file: '',
+                            type: ''
+                        ]
+                    ]
+                )
             }
         } 
 
