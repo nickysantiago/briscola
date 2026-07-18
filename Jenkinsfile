@@ -75,6 +75,8 @@ pipeline {
             agent {
                 docker { 
                     image 'snyk/snyk:node'
+                    // Force the container to run as the Jenkins host user
+                    args '-u 1001:1001'
                 }
             } 
             steps {
@@ -102,6 +104,8 @@ pipeline {
             agent {
                 docker {
                     image 'snyk/snyk:node'
+                    // Force the container to run as the Jenkins host user
+                    args '-u 1001:1001'
                 }
             }
             steps {
@@ -124,7 +128,7 @@ pipeline {
                 dir('backend') {
                     sh '''
                         docker run --rm \
-                            -u 0 \
+                            -u 1001:1001 \
                             -v "$(pwd)":/src \
                             -w /src \
                             anchore/syft:latest \
@@ -143,6 +147,8 @@ pipeline {
             agent {
                 docker { 
                     image 'node:lts-slim'
+                    // Force the container to run as the Jenkins host user
+                    args '-u 1001:1001'
                 }
             } 
             environment { 
