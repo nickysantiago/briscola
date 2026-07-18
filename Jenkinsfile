@@ -79,6 +79,7 @@ pipeline {
             } 
             steps {
                 echo "Running Snyk Code Test..."
+                // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
                 dir('backend') {
                     sh 'snyk code test --severity-threshold=high > snyk-sast-report.txt'
                 }
@@ -106,6 +107,7 @@ pipeline {
             steps {
                 echo "Running Snyk Test Scan..."
                 dir('backend') {
+                    // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
                     sh 'snyk test --severity-threshold=high > snyk-sca-report.txt'
                 }
             }
@@ -162,6 +164,12 @@ pipeline {
 
         stage('Push Artifacts') { 
             steps {
+                // Retrieve archived files to send to nexus repo
+                unarchive mapping: ['backend/snyk-sast-report.txt': 'snyk-sast-report.txt']
+                unarchive mapping: ['backend/snyk-sca-report.txt': 'snyk-sca-report.txt']
+                unarchive mapping: ['backend/sbom-backend.json': 'sbom-backend.json']
+                unarchive mapping: ['backend/test-coverage-report.txt': 'test-coverage-report.txt']
+
                 dir('backend') {
                     // Extracts version from package.json dynamically
                     script {
