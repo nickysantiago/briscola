@@ -13,7 +13,14 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     environment {
+        // Snyk 
         SNYK_TOKEN = credentials('93fe8132-018b-4ac0-89b3-20ac0c38f346')
+
+        // Nexus Artifact Repository
+        NEXUS_PROTOCOL = 'https'
+        NEXUS_URL = 'nexus.nsantiago.me'
+        NEXUS_RAW_REPO = 'bricola-raw'
+        IMAGE_NAME = 'backend' // <---------------- Change this later 
     }
 
     triggers {
@@ -30,7 +37,7 @@ pipeline {
             }
         }
 
-        stage('Backend: Install') {
+        stage('Install') {
             agent { 
                 docker { 
                     image 'node:lts-slim' 
@@ -47,7 +54,7 @@ pipeline {
             }
         }
 
-        stage('Backend: Lint') { 
+        stage('Lint') { 
             agent {
                 docker { 
                     image 'node:lts-slim'
@@ -64,7 +71,7 @@ pipeline {
             }
         } 
 
-        stage('Backend: SAST Scan') {  // Snyk Code
+        stage('SAST Scan') {  // Snyk Code
             agent {
                 docker { 
                     image 'snyk/snyk:node'
@@ -73,24 +80,24 @@ pipeline {
             steps {
                 echo "Running Snyk Code Test..."
                 dir('backend') {
-                    sh 'snyk code test --severity-threshold=high --json > snyk-sast-report.json'
+                    sh 'snyk code test --severity-threshold=high > snyk-sast-report.txt'
                 }
             }
             post {
                 always {
                     // Archive the report from the 'backend' directory so it's saved to the build
-                    archiveArtifacts artifacts: 'backend/snyk-sast-report.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'backend/snyk-sast-report.txt', allowEmptyArchive: true
                 }
             }
         } 
 
-        stage('Backend: Build') {
+        stage('Build') {
             steps {
                 echo "Building backend... actually nothing to build here - move on"
             }
         }
 
-        stage('Backend: SCA Scan') { // Snyk Test
+        stage('SCA Scan') { // Snyk Test
             agent {
                 docker {
                     image 'snyk/snyk:node'
@@ -99,18 +106,18 @@ pipeline {
             steps {
                 echo "Running Snyk Test Scan..."
                 dir('backend') {
-                    sh 'snyk test --severity-threshold=high --json > snyk-sca-report.json'
+                    sh 'snyk test --severity-threshold=high > snyk-sca-report.txt'
                 }
             }
             post {
                 always {
                     // Archive the report from the 'backend' directory so it's saved to the build
-                    archiveArtifacts artifacts: 'backend/snyk-sca-report.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'backend/snyk-sca-report.txt', allowEmptyArchive: true
                 }
             }
         }
 
-        stage('Backend: Generate SBOM') {
+        stage('Generate SBOM') {
             steps {
                 dir('backend') {
                     sh '''
@@ -130,7 +137,7 @@ pipeline {
             }
         }
         
-        stage('Backend: Unit Test') {
+        stage('Unit Test') {
             agent {
                 docker { 
                     image 'node:lts-slim'
@@ -153,33 +160,47 @@ pipeline {
             }
         }
 
-        stage('Backend: Push Artifacts') { 
+        stage('Push Artifacts') { 
             steps {
-                echo "Pushing Artifacts to Nexus..."
+                dir('backend') {
+                    // Extracts version from package.json dynamically
+                    script {
+                        def packageJson = readJSON file: 'package.json'
+                        env.APP_VERSION = packageJson.version
+                    }
+                    
+                    withCredentials([usernamePassword(credentialsId: 'nexus-jenkins', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                        echo "Uploading Scan and Unit Test Reports and SBOM to Nexus Raw Repository..."
+                        
+                        // Upload SAST Report
+                        sh """
+                            curl -v -u ${NEXUS_USER}:${NEXUS_PASS} \
+                            --upload-file snyk-sast-report.json \
+                            ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/backend-snyk-sast-report.txt
+                        """
 
-                nexusArtifactUploader(
-                    nexusVersion: '',
-                    protocol: 'http',
-                    nexusUrl: '',
-                    groupId: '',
-                    version: '',
-                    repository: '',
-                    credentialsId: 'nexus-jenkins',
-                    artifacts: [
-                        [
-                            artifactId: '',
-                            classifier: '',
-                            file: '',
-                            type: ''
-                        ],
-                        [
-                            artifactId: '',
-                            classifier: '',
-                            file: '',
-                            type: ''
-                        ]
-                    ]
-                )
+                        // Upload SCA Report
+                        sh """
+                            curl -v -u ${NEXUS_USER}:${NEXUS_PASS} \
+                            --upload-file snyk-sca-report.txt \
+                            ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/backend-snyk-sca-report.txt
+                        """
+                        
+                        // Upload SBOM
+                        sh """
+                            curl -v -u ${NEXUS_USER}:${NEXUS_PASS} \
+                            --upload-file sbom-backend.json \
+                            ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/backend-sbom.json
+                        """
+
+                        // Upload Unit Test Report
+                        sh """
+                            curl -v -u ${NEXUS_USER}:${NEXUS_PASS} \
+                            --upload-file test-coverage-report.txt \
+                            ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/backend-unit-test-coverage.txt
+                        """
+                    }
+                }
             }
         } 
 
