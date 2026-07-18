@@ -128,7 +128,7 @@ pipeline {
                 dir('backend') {
                     sh '''
                         docker run --rm \
-                            -u 1001:1001 \
+                            -u 0 \
                             -v "$(pwd)":/src \
                             -w /src \
                             anchore/syft:latest \
