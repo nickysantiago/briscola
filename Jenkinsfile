@@ -127,44 +127,17 @@ pipeline {
             steps {
                 dir('backend') {
                     sh '''
-                        docker run --rm \
-                            -u 1001:1001 \
-                            -e XDG_CACHE_HOME=/src/.cache \
-                            -v "$(pwd)":/src \
-                            -w /src \
-                            anchore/syft:latest \
-                            scan dir:. -o cyclonedx-json=sbom-backend.json
+                        docker run \
+                        -u 1001:1001 --rm \
+                        -v /home/jenkins/workspace/ure_improve-build-and-deployment/backend:/src \
+                        -e XDG_CACHE_HOME=/src/.cache anchore/syft:v1.48.0-nonroot \
+                        dir:/src
                     '''
                 }
             }
             post {
                 always {
                     archiveArtifacts artifacts: 'backend/sbom-backend.json', allowEmptyArchive: true
-                }
-            }
-        }
-        
-        stage('Unit Test') {
-            agent {
-                docker { 
-                    image 'node:lts-slim'
-                    // Force the container to run as the Jenkins host user
-                    args '-u 1001:1001'
-                }
-            } 
-            environment { 
-                npm_config_cache = "${WORKSPACE}/.npm-cache" 
-            }
-            steps {
-                echo "Running Unit Testing..."
-                dir('backend') {
-                    sh 'npm test > test-coverage-report.txt'
-                }
-            }
-            post {
-                always {
-                    // Archive the report from the 'backend' directory so it's saved to the build
-                    archiveArtifacts artifacts: 'backend/test-coverage-report.txt', allowEmptyArchive: true
                 }
             }
         }
@@ -176,7 +149,7 @@ pipeline {
                     unarchive mapping: ['backend/snyk-sast-report.txt': 'snyk-sast-report.txt']
                     unarchive mapping: ['backend/snyk-sca-report.txt': 'snyk-sca-report.txt']
                     unarchive mapping: ['backend/sbom-backend.json': 'sbom-backend.json']
-                    unarchive mapping: ['backend/test-coverage-report.txt': 'test-coverage-report.txt']
+                    // unarchive mapping: ['backend/test-coverage-report.txt': 'test-coverage-report.txt']
                     
                     // Extracts version from package.json dynamically
                     script {
@@ -209,15 +182,40 @@ pipeline {
                         """
 
                         // Upload Unit Test Report
-                        sh """
+                        /* sh """
                             curl -v -u ${NEXUS_USER}:${NEXUS_PASS} \
                             --upload-file test-coverage-report.txt \
                             ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/backend-unit-test-coverage.txt
-                        """
+                        """ */
                     }
                 }
             }
         } 
+
+        stage('Unit Test') {
+            agent {
+                docker { 
+                    image 'node:lts-slim'
+                    // Force the container to run as the Jenkins host user
+                    args '-u 1001:1001'
+                }
+            } 
+            environment { 
+                npm_config_cache = "${WORKSPACE}/.npm-cache" 
+            }
+            steps {
+                echo "Running Unit Testing..."
+                dir('backend') {
+                    sh 'npm test > test-coverage-report.txt'
+                }
+            }
+            post {
+                always {
+                    // Archive the report from the 'backend' directory so it's saved to the build
+                    archiveArtifacts artifacts: 'backend/test-coverage-report.txt', allowEmptyArchive: true
+                }
+            }
+        }
 
         stage('Staging Deploy') {
             steps {
