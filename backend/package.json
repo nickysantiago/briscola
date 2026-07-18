@@ -19,6 +19,6 @@
     "socket.io-client": "^4.8.1"
   },
   "overrides": {
-    "ws": "^8.21.0"
+    "ws": "^8.21.1"
   }
 }
