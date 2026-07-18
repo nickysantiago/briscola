@@ -130,7 +130,8 @@ pipeline {
                         docker run \
                         -u 1001:1001 --rm \
                         -v /home/jenkins/workspace/ure_improve-build-and-deployment/backend:/src \
-                        -e XDG_CACHE_HOME=/src/.cache anchore/syft:v1.48.0-nonroot \
+                        -e XDG_CACHE_HOME=/src/.cache anchore/syft:v1.48.0-nonroot \ 
+                        -o cyclonedx-json=sbom-backend.json \
                         dir:/src
                     '''
                 }
