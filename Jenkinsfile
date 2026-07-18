@@ -164,13 +164,13 @@ pipeline {
 
         stage('Push Artifacts') { 
             steps {
-                // Retrieve archived files to send to nexus repo
-                unarchive mapping: ['backend/snyk-sast-report.txt': 'snyk-sast-report.txt']
-                unarchive mapping: ['backend/snyk-sca-report.txt': 'snyk-sca-report.txt']
-                unarchive mapping: ['backend/sbom-backend.json': 'sbom-backend.json']
-                unarchive mapping: ['backend/test-coverage-report.txt': 'test-coverage-report.txt']
-
                 dir('backend') {
+                    // Retrieve archived files to send to nexus repo
+                    unarchive mapping: ['backend/snyk-sast-report.txt': 'snyk-sast-report.txt']
+                    unarchive mapping: ['backend/snyk-sca-report.txt': 'snyk-sca-report.txt']
+                    unarchive mapping: ['backend/sbom-backend.json': 'sbom-backend.json']
+                    unarchive mapping: ['backend/test-coverage-report.txt': 'test-coverage-report.txt']
+                    
                     // Extracts version from package.json dynamically
                     script {
                         def packageJson = readJSON file: 'package.json'
