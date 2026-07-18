@@ -138,7 +138,7 @@ pipeline {
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'backend/sbom-backend.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'sbom-backend.json', allowEmptyArchive: true
                 }
             }
         }
