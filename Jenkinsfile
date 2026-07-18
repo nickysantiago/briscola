@@ -128,7 +128,8 @@ pipeline {
                 dir('backend') {
                     sh '''
                         docker run --rm \
-                            -u 0 \
+                            -u 1001:1001 \
+                            -e XDG_CACHE_HOME=/src/.cache \
                             -v "$(pwd)":/src \
                             -w /src \
                             anchore/syft:latest \
