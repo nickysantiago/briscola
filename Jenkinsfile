@@ -175,7 +175,7 @@ pipeline {
                         // Upload SAST Report
                         sh """
                             curl -v -u ${NEXUS_USER}:${NEXUS_PASS} \
-                            --upload-file snyk-sast-report.json \
+                            --upload-file snyk-sast-report.txt \
                             ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/backend-snyk-sast-report.txt
                         """
 
