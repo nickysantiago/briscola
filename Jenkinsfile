@@ -89,7 +89,7 @@ pipeline {
             post {
                 always {
                     // Archive the report from the 'backend' directory so it's saved to the build
-                    archiveArtifacts artifacts: 'backend/snyk-sast-report.txt', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'backend/snyk-sast-report.txt', allowEmptyArchive: false
                 }
             }
         } 
@@ -118,27 +118,26 @@ pipeline {
             post {
                 always {
                     // Archive the report from the 'backend' directory so it's saved to the build
-                    archiveArtifacts artifacts: 'backend/snyk-sca-report.txt', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'backend/snyk-sca-report.txt', allowEmptyArchive: false
                 }
             }
         }
 
         stage('Generate SBOM') {
             steps {
-                dir('backend') {
-                    sh '''
-                        docker run \
-                        -u 1001:1001 --rm \
-                        -v /home/jenkins/workspace/ure_improve-build-and-deployment/backend:/src \
-                        -e XDG_CACHE_HOME=/src/.cache anchore/syft:v1.48.0-nonroot \
-                        -o cyclonedx-json=sbom-backend.json \
-                        dir:/src
-                    '''
-                }
+                sh '''
+                    docker run \
+                    -u 1001:1001 --rm \
+                    -v ${WORKSPACE}/backend:/src \
+                    -e XDG_CACHE_HOME=/src/.cache \
+                    anchore/syft:v1.48.0-nonroot \
+                    -o cyclonedx-json=/src/sbom-backend.json \
+                    dir:/src
+                '''
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'sbom-backend.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'backend/sbom-backend.json', allowEmptyArchive: false
                 }
             }
         }
