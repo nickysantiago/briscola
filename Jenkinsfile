@@ -19,7 +19,7 @@ pipeline {
         // Nexus Artifact Repository
         NEXUS_PROTOCOL = 'https'
         NEXUS_URL = 'nexus.nsantiago.me'
-        NEXUS_RAW_REPO = 'bricola-raw'
+        NEXUS_RAW_REPO = 'briscola-raw'
         IMAGE_NAME = 'backend' // <---------------- Change this later 
     }
 
