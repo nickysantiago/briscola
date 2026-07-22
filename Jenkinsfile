@@ -147,7 +147,7 @@ pipeline {
                 docker { 
                     image 'node:lts-slim'
                     // Force the container to run as the Jenkins host user
-                    args '-u 1001:1001 --cpus=2'
+                    args '-u 1001:1001'
                 }
             } 
             environment { 
