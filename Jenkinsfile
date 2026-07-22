@@ -186,7 +186,7 @@ pipeline {
                     script {
                         def packageJson = readJSON file: 'package.json'
                         env.APP_VERSION = packageJson.version
-                        backend-app = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
+                        backendImage = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
                     }
 
                     // BUILDS BACKEND IMAGE
