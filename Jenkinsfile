@@ -20,7 +20,7 @@ pipeline {
         NEXUS_PROTOCOL = 'https'
         NEXUS_URL = 'nexus.nsantiago.me'
         NEXUS_RAW_REPO = 'briscola-raw'
-        IMAGE_NAME = 'backend' // <---------------- Change this later 
+        IMAGE_NAME = 'briscola-backend' // <---------------- Change this later 
     }
 
     triggers {
@@ -167,6 +167,24 @@ pipeline {
             }
         }
 
+        stage('Build Docker Image') {
+            steps {
+                dir('backend') {
+                    echo "Building Backend Docker Image..."
+
+                    // Extracts version from package.json dynamically
+                    script {
+                        def packageJson = readJSON file: 'package.json'
+                        env.APP_VERSION = packageJson.version
+                    }
+
+                    // BUILDS BACKEND IMAGE
+                    // sh "docker build -t ${IMAGE_NAME}:${env.APP_VERSION} ." <---- will come back to this, using branch name for now
+                    sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
+                }
+            }
+        }
+
         stage('Push Artifacts') { 
             steps {
                 dir('backend') {
@@ -176,11 +194,6 @@ pipeline {
                     unarchive mapping: ['backend/sbom-backend.json': 'sbom-backend.json']
                     unarchive mapping: ['backend/test-coverage-report.txt': 'test-coverage-report.txt']
                     
-                    // Extracts version from package.json dynamically
-                    script {
-                        def packageJson = readJSON file: 'package.json'
-                        env.APP_VERSION = packageJson.version
-                    }
                     
                     withCredentials([usernamePassword(credentialsId: 'nexus-jenkins', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                         echo "Uploading Scan and Unit Test Reports and SBOM to Nexus Raw Repository..."
