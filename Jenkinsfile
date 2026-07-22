@@ -9,12 +9,19 @@
 // contains docker-compose.yml. Uses `docker-compose` (v1) — switch to `docker compose`
 // if the home server has the Compose v2 plugin.
 
+
+def images = [:] // Global map to store Docker image objects
+
 pipeline {
     agent { label 'jenkins-agent' }
 
     environment {
         // Snyk 
         SNYK_TOKEN = credentials('93fe8132-018b-4ac0-89b3-20ac0c38f346')
+
+        // Dockerhub
+        DOCKER_REPO = 'nickysantiago/briscola-backend'
+        DOCKER_TOKEN = credentials('79fad4f8-91d6-4fc1-9bcb-273887039ad9')
 
         // Nexus Artifact Repository
         NEXUS_PROTOCOL = 'https'
@@ -179,13 +186,29 @@ pipeline {
                     script {
                         def packageJson = readJSON file: 'package.json'
                         env.APP_VERSION = packageJson.version
-                        app = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
+                        backend-app = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
                     }
 
                     // BUILDS BACKEND IMAGE
                     // sh "docker build -t ${IMAGE_NAME}:${env.APP_VERSION} ." <---- will come back to this, using branch name for now
                     // sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
                     // sh "docker build -t ${IMAGE_NAME}:${COMMIT_HASH} ."
+                }
+            }
+        }
+
+        stage('Test Docker Images') {
+            steps {
+                dir('backend') {
+                    echo "Testing docker images..."
+                }
+            }
+        }
+
+        stage('Push Docker Images') {
+            steps {
+                dir('backend') {
+                    echo "Pushing backend app to dockerhub..."
                 }
             }
         }
