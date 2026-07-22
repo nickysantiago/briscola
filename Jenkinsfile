@@ -142,6 +142,31 @@ pipeline {
             }
         }
 
+        stage('Unit Test') {
+            agent {
+                docker { 
+                    image 'node:lts-slim'
+                    // Force the container to run as the Jenkins host user
+                    args '-u 1001:1001'
+                }
+            } 
+            environment { 
+                npm_config_cache = "${WORKSPACE}/.npm-cache" 
+            }
+            steps {
+                echo "Running Unit Testing..."
+                dir('backend') {
+                    sh 'npm test | tee test-coverage-report.txt'
+                }
+            }
+            post {
+                always {
+                    // Archive the report from the 'backend' directory so it's saved to the build
+                    archiveArtifacts artifacts: 'backend/test-coverage-report.txt', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('Push Artifacts') { 
             steps {
                 dir('backend') {
@@ -149,7 +174,7 @@ pipeline {
                     unarchive mapping: ['backend/snyk-sast-report.txt': 'snyk-sast-report.txt']
                     unarchive mapping: ['backend/snyk-sca-report.txt': 'snyk-sca-report.txt']
                     unarchive mapping: ['backend/sbom-backend.json': 'sbom-backend.json']
-                    // unarchive mapping: ['backend/test-coverage-report.txt': 'test-coverage-report.txt']
+                    unarchive mapping: ['backend/test-coverage-report.txt': 'test-coverage-report.txt']
                     
                     // Extracts version from package.json dynamically
                     script {
@@ -182,40 +207,15 @@ pipeline {
                         """
 
                         // Upload Unit Test Report
-                        /* sh """
+                        sh """
                             curl -v -u ${NEXUS_USER}:${NEXUS_PASS} \
-                            --upload-file test-coverage-report.txt \
-                            ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/backend-unit-test-coverage.txt
-                        """ */
+                            --upload-file sbom-backend.json \
+                            ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/test-coverage-report.txt.json
+                        """
                     }
                 }
             }
         } 
-
-        stage('Unit Test') {
-            agent {
-                docker { 
-                    image 'node:lts-slim'
-                    // Force the container to run as the Jenkins host user
-                    args '-u 1001:1001'
-                }
-            } 
-            environment { 
-                npm_config_cache = "${WORKSPACE}/.npm-cache" 
-            }
-            steps {
-                echo "Running Unit Testing..."
-                dir('backend') {
-                    sh 'npm test > test-coverage-report.txt'
-                }
-            }
-            post {
-                always {
-                    // Archive the report from the 'backend' directory so it's saved to the build
-                    archiveArtifacts artifacts: 'backend/test-coverage-report.txt', allowEmptyArchive: true
-                }
-            }
-        }
 
         stage('Staging Deploy') {
             steps {
