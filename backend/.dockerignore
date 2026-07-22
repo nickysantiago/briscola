@@ -2,3 +2,7 @@ node_modules
 npm-debug.log
 .env
 *.local
+.npm-cache
+snyk-*.txt
+sbom-*.json
+test-coverage-report.txt

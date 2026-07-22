@@ -1,5 +1,5 @@
 # Brisca backend — Node.js Socket.io game server
-FROM node:20-alpine
+FROM node:lts-slim
 
 WORKDIR /app
 
