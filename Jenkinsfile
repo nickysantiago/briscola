@@ -21,6 +21,9 @@ pipeline {
         NEXUS_URL = 'nexus.nsantiago.me'
         NEXUS_RAW_REPO = 'briscola-raw'
         IMAGE_NAME = 'briscola-backend' // <---------------- Change this later 
+
+        // Commit Shortened Hash
+        COMMIT_HASH  = "${env.GIT_COMMIT.take(7)}"
     }
 
     triggers {
@@ -180,7 +183,8 @@ pipeline {
 
                     // BUILDS BACKEND IMAGE
                     // sh "docker build -t ${IMAGE_NAME}:${env.APP_VERSION} ." <---- will come back to this, using branch name for now
-                    sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
+                    // sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
+                    sh "docker build -t ${IMAGE_NAME}:${COMMIT_HASH} ."
                 }
             }
         }
