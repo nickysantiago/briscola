@@ -210,7 +210,7 @@ pipeline {
                         sh """
                             curl -v -u ${NEXUS_USER}:${NEXUS_PASS} \
                             --upload-file sbom-backend.json \
-                            ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/test-coverage-report.txt.json
+                            ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/test-coverage-report.txt
                         """
                     }
                 }
