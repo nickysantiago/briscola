@@ -186,7 +186,8 @@ pipeline {
                     script {
                         def packageJson = readJSON file: 'package.json'
                         env.APP_VERSION = packageJson.version
-                        backendImage = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
+                        // backendImage = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
+                        images['backendImage']  = docker.build("${DOCKER_USER}/${IMAGE_NAME}:${COMMIT_HASH}")
                     }
 
                     // BUILDS BACKEND IMAGE
@@ -209,6 +210,15 @@ pipeline {
             steps {
                 dir('backend') {
                     echo "Pushing backend app to dockerhub..."
+                    script {
+                        docker.withRegistry('https://index.docker.io/v1/', '${DOCKER_TOKEN}') {
+                            // Push each image stored in the map
+                            images.each { name, img ->
+                                img.push("${IMAGE_TAG}")
+                                //img.push('latest')
+                            }
+                        }
+                    }
                 }
             }
         }
