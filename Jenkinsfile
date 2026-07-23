@@ -20,14 +20,15 @@ pipeline {
         SNYK_TOKEN = credentials('93fe8132-018b-4ac0-89b3-20ac0c38f346')
 
         // Dockerhub
-        DOCKER_REPO = 'nickysantiago/briscola-backend'
+        IMAGE_NAME = 'briscola-backend' // <---------------- Change this later 
+        DOCKER_USER = 'nickysantiago'
+        // DOCKER_REPO = 'nickysantiago/briscola-backend'
         DOCKER_TOKEN = credentials('79fad4f8-91d6-4fc1-9bcb-273887039ad9')
 
         // Nexus Artifact Repository
         NEXUS_PROTOCOL = 'https'
         NEXUS_URL = 'nexus.nsantiago.me'
         NEXUS_RAW_REPO = 'briscola-raw'
-        IMAGE_NAME = 'briscola-backend' // <---------------- Change this later 
 
         // Commit Shortened Hash
         COMMIT_HASH  = "${env.GIT_COMMIT.take(7)}"
@@ -214,7 +215,7 @@ pipeline {
                         docker.withRegistry('https://index.docker.io/v1/', '79fad4f8-91d6-4fc1-9bcb-273887039ad9') {
                             // Push each image stored in the map
                             images.each { name, img ->
-                                img.push("${IMAGE_NAME}:${COMMIT_HASH}")
+                                img.push("${DOCKER_USER}/${IMAGE_NAME}:${COMMIT_HASH}")
                                 //img.push('latest')
                             }
                         }
