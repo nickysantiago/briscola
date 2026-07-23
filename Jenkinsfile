@@ -211,7 +211,7 @@ pipeline {
                 dir('backend') {
                     echo "Pushing backend app to dockerhub..."
                     script {
-                        docker.withRegistry('https://index.docker.io/v1/', '${DOCKER_TOKEN}') {
+                        docker.withRegistry('https://index.docker.io/v1/', '79fad4f8-91d6-4fc1-9bcb-273887039ad9') {
                             // Push each image stored in the map
                             images.each { name, img ->
                                 img.push("${IMAGE_TAG}")
