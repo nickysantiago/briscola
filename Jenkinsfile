@@ -293,11 +293,26 @@ pipeline {
             }
         }
 
-        stage('Cleanup') {
-            steps {
-                echo "Cleaning up..."
+    } // stages
+
+    post {
+        always {
+            script {
+                try {
+                    cleanWs()
+                } catch (e) {
+                    echo "Workspace cleanup skipped: ${e.message}"
+                }
             }
         }
-
-    }
-}
+        success {
+            echo "Pipeline completed. Processed: ${env.CHANGED_DIRS}"
+        }
+        failure {
+            echo "Pipeline failed. Processed: ${env.CHANGED_DIRS}"
+        }
+        unstable {
+            echo "Pipeline unstable. Processed: ${env.CHANGED_DIRS}"
+        }
+    } // post
+} // pipeline
