@@ -96,7 +96,7 @@ pipeline {
                 echo "Running Snyk Code Test..."
                 // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
                 dir('backend') {
-                    sh 'snyk code test --severity-threshold=high > snyk-sast-report.txt'
+                    sh 'snyk code test --severity-threshold=${SNYK_SEVERITY} > snyk-sast-report.txt'
                 }
             }
             post {
@@ -125,7 +125,7 @@ pipeline {
                 echo "Running Snyk Test Scan..."
                 dir('backend') {
                     // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
-                    sh 'snyk test --severity-threshold=high > snyk-sca-report.txt'
+                    sh 'snyk test --severity-threshold=${SNYK_SEVERITY} > snyk-sca-report.txt'
                 }
             }
             post {
@@ -225,9 +225,8 @@ pipeline {
                            - Snyk returns exit code 1 if vulns are >= severity threshold
                             */
                             sh """
-                                snyk container test ${IMAGE_NAME}:${IMAGE_TAG} \
-                                  --file=Dockerfile \
-                                  --severity-threshold=${SNYK_SEVERITY} > snyk-container-report.txt 2>&1
+                                snyk container test ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} \
+                                  --file=Dockerfile > snyk-container-report.txt 2>&1
                             """
                         }
                         catch(Exception e) {
