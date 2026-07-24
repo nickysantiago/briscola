@@ -30,8 +30,8 @@ pipeline {
         NEXUS_URL = 'nexus.nsantiago.me'
         NEXUS_RAW_REPO = 'briscola-raw'
 
-        // Commit Shortened Hash
-        COMMIT_HASH  = "${env.GIT_COMMIT.take(7)}"
+        // Get the last 5 characters of the commit ID - used with Docker image tag
+        COMMIT_HASH  = "${env.GIT_COMMIT[-5..-1]}"
     }
 
     triggers {
