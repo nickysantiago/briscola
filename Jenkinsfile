@@ -18,20 +18,22 @@ pipeline {
     environment {
         // Snyk 
         SNYK_TOKEN = credentials('93fe8132-018b-4ac0-89b3-20ac0c38f346')
+        SNYK_SEVERITY = 'high' // Severity threshold - snyk scans fail if this level is met or exceeded
 
-        // Dockerhub
+        // Get the last 5 characters of the commit ID - used with Docker image tag
+        COMMIT_HASH  = "${env.GIT_COMMIT[-5..-1]}"
+
+        // Docker
+        DOCKER_TOKEN = credentials('79fad4f8-91d6-4fc1-9bcb-273887039ad9') // Dockerhub Credentials
         IMAGE_NAME = 'briscola-backend' // <---------------- Change this later 
         DOCKER_USER = 'nickysantiago'
+        IMAGE_TAG = "${env.COMMIT_HASH}"
         // DOCKER_REPO = 'nickysantiago/briscola-backend'
-        DOCKER_TOKEN = credentials('79fad4f8-91d6-4fc1-9bcb-273887039ad9')
 
         // Nexus Artifact Repository
         NEXUS_PROTOCOL = 'https'
         NEXUS_URL = 'nexus.nsantiago.me'
         NEXUS_RAW_REPO = 'briscola-raw'
-
-        // Get the last 5 characters of the commit ID - used with Docker image tag
-        COMMIT_HASH  = "${env.GIT_COMMIT[-5..-1]}"
     }
 
     triggers {
@@ -188,7 +190,7 @@ pipeline {
                         def packageJson = readJSON file: 'package.json'
                         env.APP_VERSION = packageJson.version
                         // backendImage = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
-                        images['backendImage']  = docker.build("${DOCKER_USER}/${IMAGE_NAME}:${COMMIT_HASH}")
+                        images['backendImage']  = docker.build("${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}")
                     }
 
                     // BUILDS BACKEND IMAGE
@@ -199,10 +201,50 @@ pipeline {
             }
         }
 
-        stage('Test Docker Images') {
+        stage('Container Scan') {
+            agent {
+                docker {
+                    // Use official Snyk CLI image (or 'snyk/snyk:node' / 'snyk/snyk-cli:docker')
+                    image 'snyk/snyk:docker'
+                    // IMPORTANT: Mount the Docker socket so Snyk can read the local host image
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
+                    // Ensures the stage uses the current workspace built in previous steps
+                    reuseNode true 
+                }
+            }
             steps {
                 dir('backend') {
-                    echo "Testing docker images..."
+                    echo "Running Snyk container scan..."
+                    script {
+                        def scanFailed = false
+
+                        try {
+                            /*
+                           - Run snyk container test
+                           - Pipe stdout & stderr to the report file
+                           - Snyk returns exit code 1 if vulns are >= severity threshold
+                            */
+                            sh """
+                                snyk container test ${IMAGE_NAME}:${IMAGE_TAG} \
+                                  --file=Dockerfile \
+                                  --severity-threshold=${SNYK_SEVERITY} > snyk-container-report.txt 2>&1
+                            """
+                        }
+                        catch(Exception e) {
+                            scanFailed = true
+                            echo "Snyk Scan detected issues exceeding the severity threshold!"
+                        }
+
+                        if (scanFailed) {
+                            error("Pipeline failed: Exceeded vulnerability threshold (${SNYK_SEVERITY}). See Snyk Container report for this build.")
+                        }
+                    }
+                }
+            }
+            post {
+                always {
+                    // Always archive the report file so it is saved to the build execution
+                    archiveArtifacts artifacts: 'snyk-container-report.txt', allowEmptyArchive: true
                 }
             }
         }
