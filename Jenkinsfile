@@ -243,7 +243,7 @@ pipeline {
             post {
                 always {
                     // Always archive the report file so it is saved to the build execution
-                    archiveArtifacts artifacts: 'snyk-container-report.txt', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'backend/snyk-container-report.txt', allowEmptyArchive: true
                 }
             }
         }
