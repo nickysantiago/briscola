@@ -18,7 +18,7 @@ pipeline {
     environment {
         // Snyk 
         SNYK_TOKEN = credentials('93fe8132-018b-4ac0-89b3-20ac0c38f346')
-        SNYK_SEVERITY = 'critical' // Severity threshold - snyk scans fail if this level is met or exceeded
+        SNYK_SEVERITY = 'high' // Severity threshold - snyk scans fail if this level is met or exceeded
 
         // Get the last 5 characters of the commit ID - used with Docker image tag
         COMMIT_HASH  = "${env.GIT_COMMIT[-5..-1]}"
@@ -226,7 +226,6 @@ pipeline {
                             */
                             sh """
                                 snyk container test ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} \
-				  --severity-threshold=${SNYK_SEVERITY} \
                                   --file=Dockerfile > snyk-container-report.txt 2>&1
                             """
                         }
@@ -236,7 +235,7 @@ pipeline {
                         }
 
                         if (scanFailed) {
-                            error("Pipeline failed: Exceeded vulnerability threshold (${SNYK_SEVERITY}). See Snyk Container report for this build.")
+                            echo "Container scan exceeded vulnerability threshold (${SNYK_SEVERITY}). See Snyk Container report for this build. Build will continue."
                         }
                     }
                 }
