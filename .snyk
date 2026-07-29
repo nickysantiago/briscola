@@ -1,0 +1,16 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+
+# Used to exclude entire directories from specific scan types (like Snyk Code)
+exclude:
+  code:
+    - node_modules/
+    - backend/node_modules/
+
+# Used to ignore specific vulnerability identifiers globally or conditionally
+ignore:
+  CVE-2026-59873:
+    - '*':
+        reason: 'Just trying to get the darn build moving - will come back to this once a fix is available in the upstream node:lts-slim image'
+        expires: 2026-12-31T00:00:00.000Z
+        created: 2026-07-28T12:00:00.000Z
