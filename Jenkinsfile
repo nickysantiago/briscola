@@ -302,7 +302,7 @@ pipeline {
                         // Upload Unit Test Report
                         sh """
                             curl -v -u ${NEXUS_USER}:${NEXUS_PASS} \
-                            --upload-file sbom-backend.json \
+                            --upload-file test-coverage-report.txt \
                             ${NEXUS_PROTOCOL}://${NEXUS_URL}/repository/${NEXUS_RAW_REPO}/${IMAGE_NAME}/${env.APP_VERSION}/test-coverage-report.txt
                         """
                     }
