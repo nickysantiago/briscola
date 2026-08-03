@@ -447,7 +447,7 @@ pipeline {
                     }
                     post {
                         always {
-                            archiveArtifacts artifacts: 'backend/sbom-frontend.json', allowEmptyArchive: false
+                            archiveArtifacts artifacts: 'frontend/sbom-frontend.json', allowEmptyArchive: false
                         }
                     }
                 }
@@ -472,7 +472,7 @@ pipeline {
             }
         }
 
-        /*
+        
         stage('Push Docker Images') {
             steps {
                 dir('backend') {
@@ -489,7 +489,7 @@ pipeline {
                 }
             }
         }
-        */
+        
 
         /*
         stage('Push Artifacts') { 
