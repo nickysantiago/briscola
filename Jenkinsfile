@@ -354,18 +354,16 @@ pipeline {
         }
 
         stage('Generate SBOM') {
-            agent {
-                docker { 
-                    image 'anchore/syft:v1.48.0-debug'
-                    // Force the container to run as the Jenkins host user
-                    args '-u 1001:1001 -e XDG_CACHE_HOME=/src/.cache -v /var/run/docker.sock:/var/run/docker.sock --entrypoint='
-                }
-            } 
             steps {
-                dir('backend') {
-                    echo 'Generating backend SBOM for Backend Docker Image...'
-                    sh '/syft scan docker:${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} -o cyclonedx-json=sbom-backend.json'
-                }
+                sh '''
+                    docker run \
+                    -u 1001:1001 --rm \
+                    -v ${WORKSPACE}/backend:/src \
+                    -e XDG_CACHE_HOME=/src/.cache \
+                    anchore/syft:v1.48.0-nonroot \
+                    -o cyclonedx-json=/src/sbom-backend.json \
+                    dir:/src
+                '''
             }
             post {
                 always {
