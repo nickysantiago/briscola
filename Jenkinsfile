@@ -358,7 +358,7 @@ pipeline {
                 docker { 
                     image 'anchore/syft:v1.48.0-debug'
                     // Force the container to run as the Jenkins host user
-                    args '-u 1001:1001 -v /var/run/docker.sock:/var/run/docker.sock --entrypoint='
+                    args '-u 1001:1001 -e XDG_CACHE_HOME=/src/.cache -v /var/run/docker.sock:/var/run/docker.sock --entrypoint='
                 }
             } 
             steps {
