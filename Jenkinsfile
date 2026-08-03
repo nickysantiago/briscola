@@ -55,7 +55,7 @@ pipeline {
                 // =========
                 // FRONTEND
                 // =========
-                stage('frontend') {
+                stage('Install Frontend') {
                     agent { 
                         docker { 
                             image 'node:lts-slim' 
@@ -66,7 +66,7 @@ pipeline {
                     }
                     steps {
                         echo "Running npm ci"
-                        dir('backend') {
+                        dir('frontend') {
                             sh 'npm ci'
                         }
                     }
@@ -74,7 +74,7 @@ pipeline {
                 // =========
                 // BACKEND
                 // =========
-                stage('backend') {
+                stage('Install Backend') {
                     agent { 
                         docker { 
                             image 'node:lts-slim' 
@@ -93,49 +93,116 @@ pipeline {
             }
         }
 
-        stage('Lint') { 
-            agent {
-                docker { 
-                    image 'node:lts-slim'
+        stage('Lint') {
+            parallel {
+                stage('Lint Frontend') {
+                    agent {
+                        docker { 
+                            image 'node:lts-slim'
+                        }
+                    } 
+                    environment { 
+                        npm_config_cache = "${WORKSPACE}/.npm-cache-frontend" 
+                    }
+                    steps {
+                        echo "Running Lint..."
+                        dir('frontend') {
+                            sh 'npm run lint --if-present'
+                        }
+                    }
+                }
+                stage('Lint Backend') {
+                    agent {
+                        docker { 
+                            image 'node:lts-slim'
+                        }
+                    } 
+                    environment { 
+                        npm_config_cache = "${WORKSPACE}/.npm-cache-backend" 
+                    }
+                    steps {
+                        echo "Running Lint..."
+                        dir('backend') {
+                            sh 'npm run lint --if-present'
+                        }
+                    }
                 }
             } 
-            environment { 
-                npm_config_cache = "${WORKSPACE}/.npm-cache-backend" 
-            }
-            steps {
-                echo "Running Lint..."
-                dir('backend') {
-                    sh 'npm run lint --if-present'
-                }
-            }
         } 
 
         stage('SAST Scan') {  // Snyk Code
-            agent {
-                docker { 
-                    image 'snyk/snyk:node'
-                    // Force the container to run as the Jenkins host user
-                    args '-u 1001:1001'
+            parallel {
+                stage('SAST Frontend') {
+                    agent {
+                        docker { 
+                            image 'snyk/snyk:node'
+                            // Force the container to run as the Jenkins host user
+                            args '-u 1001:1001'
+                        }
+                    } 
+                    steps {
+                        echo "Running Snyk Code Test on Frontend..."
+                        // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
+                        dir('frontend') {
+                            sh 'snyk code test --severity-threshold=${SNYK_SEVERITY} > snyk-sast-frontend-report.txt'
+                        }
+                    }
+                    post {
+                        always {
+                            // Archive the report from the 'backend' directory so it's saved to the build
+                            archiveArtifacts artifacts: 'frontend/snyk-sast-report.txt', allowEmptyArchive: false
+                        }
+                    }
                 }
-            } 
-            steps {
-                echo "Running Snyk Code Test..."
-                // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
-                dir('backend') {
-                    sh 'snyk code test --severity-threshold=${SNYK_SEVERITY} > snyk-sast-report.txt'
-                }
-            }
-            post {
-                always {
-                    // Archive the report from the 'backend' directory so it's saved to the build
-                    archiveArtifacts artifacts: 'backend/snyk-sast-report.txt', allowEmptyArchive: false
+                stage('SAST Backend') {
+                    agent {
+                        docker { 
+                            image 'snyk/snyk:node'
+                            // Force the container to run as the Jenkins host user
+                            args '-u 1001:1001'
+                        }
+                    } 
+                    steps {
+                        echo "Running Snyk Code Test on Backend..."
+                        // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
+                        dir('backend') {
+                            sh 'snyk code test --severity-threshold=${SNYK_SEVERITY} > snyk-sast-backend-report.txt'
+                        }
+                    }
+                    post {
+                        always {
+                            // Archive the report from the 'backend' directory so it's saved to the build
+                            archiveArtifacts artifacts: 'backend/snyk-sast-report.txt', allowEmptyArchive: false
+                        }
+                    }
                 }
             }
         } 
 
         stage('Build') {
-            steps {
-                echo "Building backend... actually nothing to build here - move on"
+            parallel {
+                stage('Build Frontend') {
+                    agent {
+                        docker { 
+                            image 'node:lts-slim'
+                        }
+                    } 
+                    environment { 
+                        npm_config_cache = "${WORKSPACE}/.npm-cache-frontend" 
+                    }
+                    steps {
+                        echo "Building Frontend..."
+                        dir('frontend') {
+                            sh 'npm check'
+                            sh 'npm build'
+                        }
+                    }
+                }
+                stage('Build Backend') {
+                    steps {
+                        echo "Building backend... actually nothing to build here - move on"
+                    }
+                }
             }
         }
 
@@ -295,7 +362,7 @@ pipeline {
             steps {
                 dir('backend') {
                     // Retrieve archived files to send to nexus repo
-                    unarchive mapping: ['backend/snyk-sast-report.txt': 'snyk-sast-report.txt']
+                    unarchive mapping: ['backend/snyk-sast-backend-report.txt': 'snyk-sast-report.txt']
                     unarchive mapping: ['backend/snyk-sca-report.txt': 'snyk-sca-report.txt']
                     unarchive mapping: ['backend/sbom-backend.json': 'sbom-backend.json']
                     unarchive mapping: ['backend/test-coverage-report.txt': 'test-coverage-report.txt']
