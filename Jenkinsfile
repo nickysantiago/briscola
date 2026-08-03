@@ -364,7 +364,7 @@ pipeline {
             steps {
                 dir('backend') {
                     echo 'Generating backend SBOM for Backend Docker Image...'
-                    sh 'syft scan ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} -o cyclonedx-json=sbom-backend.json'
+                    sh 'scan ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} -o cyclonedx-json=sbom-backend.json'
                 }
             }
             post {
