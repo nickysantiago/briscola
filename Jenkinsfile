@@ -286,92 +286,193 @@ pipeline {
         }
 
         stage('Build Docker Image') {
-            steps {
-                dir('backend') {
-                    echo "Building Backend Docker Image..."
+            parallel {
+                stage('Build Frontend') {
+                    steps {
+                        dir('frontend') {
+                            echo "Building Frontend Docker Image..."
 
-                    // Extracts version from package.json dynamically
-                    script {
-                        def packageJson = readJSON file: 'package.json'
-                        env.APP_VERSION = packageJson.version
-                        // backendImage = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
-                        images['backendImage']  = docker.build("${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}")
+                            // Extracts version from package.json dynamically
+                            script {
+                                def packageJson = readJSON file: 'package.json'
+                                env.APP_VERSION = packageJson.version
+                                // backendImage = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
+                                images['frontendImage']  = docker.build("${DOCKER_USER}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}")
+                            }
+
+                            // BUILDS BACKEND IMAGE
+                            // sh "docker build -t ${IMAGE_NAME}:${env.APP_VERSION} ." <---- will come back to this, using branch name for now
+                            // sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
+                            // sh "docker build -t ${IMAGE_NAME}:${COMMIT_HASH} ."
+                        }
                     }
+                }
+                stage('Build Backend') {
+                    steps {
+                        dir('backend') {
+                            echo "Building Backend Docker Image..."
 
-                    // BUILDS BACKEND IMAGE
-                    // sh "docker build -t ${IMAGE_NAME}:${env.APP_VERSION} ." <---- will come back to this, using branch name for now
-                    // sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
-                    // sh "docker build -t ${IMAGE_NAME}:${COMMIT_HASH} ."
+                            // Extracts version from package.json dynamically
+                            script {
+                                def packageJson = readJSON file: 'package.json'
+                                env.APP_VERSION = packageJson.version
+                                // backendImage = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
+                                images['backendImage']  = docker.build("${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}")
+                            }
+
+                            // BUILDS BACKEND IMAGE
+                            // sh "docker build -t ${IMAGE_NAME}:${env.APP_VERSION} ." <---- will come back to this, using branch name for now
+                            // sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
+                            // sh "docker build -t ${IMAGE_NAME}:${COMMIT_HASH} ."
+                        }
+                    }
                 }
             }
         }
 
         stage('Container Scan') {
-            agent {
-                docker {
-                    // Use official Snyk CLI image (or 'snyk/snyk:node' / 'snyk/snyk-cli:docker')
-                    image 'snyk/snyk:docker'
-                    // IMPORTANT: Mount the Docker socket so Snyk can read the local host image
-                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
-                    // Ensures the stage uses the current workspace built in previous steps
-                    reuseNode true 
-                }
-            }
-            steps {
-                dir('backend') {
-                    echo "Running Snyk container scan..."
-                    script {
-                        def scanFailed = false
-
-                        try {
-                            /*
-                           - Run snyk container test
-                           - Pipe stdout & stderr to the report file
-                           - Snyk returns exit code 1 if vulns are >= severity threshold
-                            */
-                            sh """
-                                snyk container test ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} \
-                                  --file=Dockerfile > snyk-container-report.txt 2>&1
-                            """
+            parallel {
+                stage('Scan Frontend Container') {
+                    agent {
+                        docker {
+                            // Use official Snyk CLI image (or 'snyk/snyk:node' / 'snyk/snyk-cli:docker')
+                            image 'snyk/snyk:docker'
+                            // IMPORTANT: Mount the Docker socket so Snyk can read the local host image
+                            args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
+                            // Ensures the stage uses the current workspace built in previous steps
+                            reuseNode true 
                         }
-                        catch(Exception e) {
-                            scanFailed = true
-                            echo "Snyk Scan detected issues exceeding the severity threshold!"
-                        }
+                    }
+                    steps {
+                        dir('frontend') {
+                            echo "Running FRONTEND Snyk container scan..."
+                            script {
+                                def scanFailed = false
 
-                        if (scanFailed) {
-                            echo "Container scan exceeded vulnerability threshold (${SNYK_SEVERITY}). See Snyk Container report for this build. Build will continue."
+                                try {
+                                    /*
+                                   - Run snyk container test
+                                   - Pipe stdout & stderr to the report file
+                                   - Snyk returns exit code 1 if vulns are >= severity threshold
+                                    */
+                                    sh """
+                                        snyk container test ${DOCKER_USER}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG} \
+                                          --file=Dockerfile > snyk-container-frontend-report.txt 2>&1
+                                    """
+                                }
+                                catch(Exception e) {
+                                    scanFailed = true
+                                    echo "Snyk Scan detected issues exceeding the severity threshold!"
+                                }
+
+                                if (scanFailed) {
+                                    echo "Container scan for frontend exceeded vulnerability threshold (${SNYK_SEVERITY}). See Snyk Container report for this build. Build will continue."
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            // Always archive the report file so it is saved to the build execution
+                            archiveArtifacts artifacts: 'frontend/snyk-container-frontend-report.txt', allowEmptyArchive: true
                         }
                     }
                 }
-            }
-            post {
-                always {
-                    // Always archive the report file so it is saved to the build execution
-                    archiveArtifacts artifacts: 'backend/snyk-container-report.txt', allowEmptyArchive: true
+                stage('Scan Backend Container') {
+                    agent {
+                        docker {
+                            // Use official Snyk CLI image (or 'snyk/snyk:node' / 'snyk/snyk-cli:docker')
+                            image 'snyk/snyk:docker'
+                            // IMPORTANT: Mount the Docker socket so Snyk can read the local host image
+                            args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
+                            // Ensures the stage uses the current workspace built in previous steps
+                            reuseNode true 
+                        }
+                    }
+                    steps {
+                        dir('backend') {
+                            echo "Running BACKEND Snyk container scan..."
+                            script {
+                                def scanFailed = false
+
+                                try {
+                                    /*
+                                   - Run snyk container test
+                                   - Pipe stdout & stderr to the report file
+                                   - Snyk returns exit code 1 if vulns are >= severity threshold
+                                    */
+                                    sh """
+                                        snyk container test ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} \
+                                          --file=Dockerfile > snyk-container-backend-report.txt 2>&1
+                                    """
+                                }
+                                catch(Exception e) {
+                                    scanFailed = true
+                                    echo "Snyk Scan detected issues exceeding the severity threshold!"
+                                }
+
+                                if (scanFailed) {
+                                    echo "Container scan for backend exceeded vulnerability threshold (${SNYK_SEVERITY}). See Snyk Container report for this build. Build will continue."
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            // Always archive the report file so it is saved to the build execution
+                            archiveArtifacts artifacts: 'backend/snyk-container-backend-report.txt', allowEmptyArchive: true
+                        }
+                    }
                 }
             }
         }
 
         stage('Generate SBOM') {
-            steps {
-                sh '''
-                    docker run \
-                    -u 1001:1001 --rm \
-                    -v ${WORKSPACE}/backend:/src \
-                    -e XDG_CACHE_HOME=/src/.cache \
-                    anchore/syft:v1.48.0-nonroot \
-                    -o cyclonedx-json=/src/sbom-backend.json \
-                    dir:/src
-                '''
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'backend/sbom-backend.json', allowEmptyArchive: false
+            /*
+             Note: NOT using the docker plugin in this stage
+             Permission issue with the ".cache" directory 
+            */
+            parallel {
+                stage('Frontend SBOM') {
+                    steps {
+                        sh '''
+                            docker run \
+                            -u 1001:1001 --rm \
+                            -v ${WORKSPACE}/frontend:/src \
+                            -e XDG_CACHE_HOME=/src/.cache \
+                            anchore/syft:v1.48.0-nonroot \
+                            -o cyclonedx-json=/src/sbom-frontend.json \
+                            dir:/src
+                        '''
+                    }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'backend/sbom-frontend.json', allowEmptyArchive: false
+                        }
+                    }
+                }
+                stage('Backend SBOM') {
+                    steps {
+                        sh '''
+                            docker run \
+                            -u 1001:1001 --rm \
+                            -v ${WORKSPACE}/backend:/src \
+                            -e XDG_CACHE_HOME=/src/.cache \
+                            anchore/syft:v1.48.0-nonroot \
+                            -o cyclonedx-json=/src/sbom-backend.json \
+                            dir:/src
+                        '''
+                    }
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'backend/sbom-backend.json', allowEmptyArchive: false
+                        }
+                    }
                 }
             }
         }
 
+        /*
         stage('Push Docker Images') {
             steps {
                 dir('backend') {
@@ -388,6 +489,8 @@ pipeline {
                 }
             }
         }
+        */
+
         /*
         stage('Push Artifacts') { 
             steps {
