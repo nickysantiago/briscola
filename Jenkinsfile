@@ -198,7 +198,7 @@ pipeline {
                         echo "Building Frontend..."
                         dir('frontend') {
                             sh 'npm run check'
-                            sh 'npm build'
+                            sh 'npm run build'
                         }
                     }
                 }
