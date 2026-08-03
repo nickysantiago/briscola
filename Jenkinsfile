@@ -25,7 +25,8 @@ pipeline {
 
         // Docker
         DOCKER_TOKEN = credentials('79fad4f8-91d6-4fc1-9bcb-273887039ad9') // Dockerhub Credentials
-        IMAGE_NAME = 'briscola-backend' // <---------------- Change this later 
+        IMAGE_NAME = 'briscola-backend' // <---------------- Change this later
+        FRONTEND_IMAGE_NAME = 'briscola-frontend' 
         DOCKER_USER = 'nickysantiago'
         IMAGE_TAG = "${env.COMMIT_HASH}"
         // DOCKER_REPO = 'nickysantiago/briscola-backend'
@@ -211,43 +212,50 @@ pipeline {
         }
 
         stage('SCA Scan') { // Snyk Test
-            agent {
-                docker {
-                    image 'snyk/snyk:node'
-                    // Force the container to run as the Jenkins host user
-                    args '-u 1001:1001'
+            parallel {
+                stage('SCA Frontend') {
+                    agent {
+                        docker {
+                            image 'snyk/snyk:node'
+                            // Force the container to run as the Jenkins host user
+                            args '-u 1001:1001'
+                        }
+                    }
+                    steps {
+                        echo "Running Snyk Test Scan on Frontend..."
+                        dir('frontend') {
+                            // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
+                            sh 'snyk test --severity-threshold=${SNYK_SEVERITY} > snyk-sca-frontend-report.txt'
+                        }
+                    }
+                    post {
+                        always {
+                            // Archive the report from the 'frontend' directory so it's saved to the build
+                            archiveArtifacts artifacts: 'frontend/snyk-sca-frontend-report.txt', allowEmptyArchive: false
+                        }
+                    }
                 }
-            }
-            steps {
-                echo "Running Snyk Test Scan..."
-                dir('backend') {
-                    // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
-                    sh 'snyk test --severity-threshold=${SNYK_SEVERITY} > snyk-sca-report.txt'
-                }
-            }
-            post {
-                always {
-                    // Archive the report from the 'backend' directory so it's saved to the build
-                    archiveArtifacts artifacts: 'backend/snyk-sca-report.txt', allowEmptyArchive: false
-                }
-            }
-        }
-
-        stage('Generate SBOM') {
-            steps {
-                sh '''
-                    docker run \
-                    -u 1001:1001 --rm \
-                    -v ${WORKSPACE}/backend:/src \
-                    -e XDG_CACHE_HOME=/src/.cache \
-                    anchore/syft:v1.48.0-nonroot \
-                    -o cyclonedx-json=/src/sbom-backend.json \
-                    dir:/src
-                '''
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'backend/sbom-backend.json', allowEmptyArchive: false
+                stage('SCA Backend') {
+                    agent {
+                        docker {
+                            image 'snyk/snyk:node'
+                            // Force the container to run as the Jenkins host user
+                            args '-u 1001:1001'
+                        }
+                    }
+                    steps {
+                        echo "Running Snyk Test Scan on Backend..."
+                        dir('backend') {
+                            // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
+                            sh 'snyk test --severity-threshold=${SNYK_SEVERITY} > snyk-sca-backend-report.txt'
+                        }
+                    }
+                    post {
+                        always {
+                            // Archive the report from the 'backend' directory so it's saved to the build
+                            archiveArtifacts artifacts: 'backend/snyk-sca-backend-report.txt', allowEmptyArchive: false
+                        }
+                    }
                 }
             }
         }
@@ -345,6 +353,27 @@ pipeline {
             }
         }
 
+        stage('Generate SBOM') {
+            agent {
+                docker { 
+                    image 'anchore/syft:v1.48.0-debug'
+                    // Force the container to run as the Jenkins host user
+                    args '-u 1001:1001 -v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            } 
+            steps {
+                dir('backend') {
+                    echo 'Generating backend SBOM for Backend Docker Image...'
+                    sh 'syft scan ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} -o cyclonedx-json=sbom-backend.json'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'backend/sbom-backend.json', allowEmptyArchive: false
+                }
+            }
+        }
+
         stage('Push Docker Images') {
             steps {
                 dir('backend') {
@@ -361,13 +390,13 @@ pipeline {
                 }
             }
         }
-
+        /*
         stage('Push Artifacts') { 
             steps {
                 dir('backend') {
                     // Retrieve archived files to send to nexus repo
                     unarchive mapping: ['backend/snyk-sast-backend-report.txt': 'snyk-sast-report.txt']
-                    unarchive mapping: ['backend/snyk-sca-report.txt': 'snyk-sca-report.txt']
+                    unarchive mapping: ['backend/snyk-sca-backend-report.txt': 'snyk-sca-report.txt']
                     unarchive mapping: ['backend/sbom-backend.json': 'sbom-backend.json']
                     unarchive mapping: ['backend/test-coverage-report.txt': 'test-coverage-report.txt']
                     
@@ -406,6 +435,7 @@ pipeline {
                 }
             }
         } 
+        */
 
         stage('Staging Deploy') {
             steps {
