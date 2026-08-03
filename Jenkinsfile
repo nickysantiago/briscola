@@ -150,7 +150,7 @@ pipeline {
                     post {
                         always {
                             // Archive the report from the 'backend' directory so it's saved to the build
-                            archiveArtifacts artifacts: 'frontend/snyk-sast-report.txt', allowEmptyArchive: false
+                            archiveArtifacts artifacts: 'frontend/snyk-sast-frontend-report.txt', allowEmptyArchive: false
                         }
                     }
                 }
@@ -172,7 +172,7 @@ pipeline {
                     post {
                         always {
                             // Archive the report from the 'backend' directory so it's saved to the build
-                            archiveArtifacts artifacts: 'backend/snyk-sast-report.txt', allowEmptyArchive: false
+                            archiveArtifacts artifacts: 'backend/snyk-sast-backend-report.txt', allowEmptyArchive: false
                         }
                     }
                 }
