@@ -51,18 +51,44 @@ pipeline {
         }
 
         stage('Install') {
-            agent { 
-                docker { 
-                    image 'node:lts-slim' 
-                } 
-            }
-            environment { 
-                npm_config_cache = "${WORKSPACE}/.npm-cache" 
-            }
-            steps {
-                echo "Running npm ci"
-                dir('backend') {
-                    sh 'npm ci'
+            parallel {
+                // =========
+                // FRONTEND
+                // =========
+                stage('frontend') {
+                    agent { 
+                        docker { 
+                            image 'node:lts-slim' 
+                        } 
+                    }
+                    environment { 
+                        npm_config_cache = "${WORKSPACE}/.npm-cache-frontend" 
+                    }
+                    steps {
+                        echo "Running npm ci"
+                        dir('backend') {
+                            sh 'npm ci'
+                        }
+                    }
+                }
+                // =========
+                // BACKEND
+                // =========
+                stage('backend') {
+                    agent { 
+                        docker { 
+                            image 'node:lts-slim' 
+                        } 
+                    }
+                    environment { 
+                        npm_config_cache = "${WORKSPACE}/.npm-cache-backend" 
+                    }
+                    steps {
+                        echo "Running npm ci"
+                        dir('backend') {
+                            sh 'npm ci'
+                        }
+                    }
                 }
             }
         }
@@ -74,7 +100,7 @@ pipeline {
                 }
             } 
             environment { 
-                npm_config_cache = "${WORKSPACE}/.npm-cache" 
+                npm_config_cache = "${WORKSPACE}/.npm-cache-backend" 
             }
             steps {
                 echo "Running Lint..."
@@ -164,7 +190,7 @@ pipeline {
                 }
             } 
             environment { 
-                npm_config_cache = "${WORKSPACE}/.npm-cache" 
+                npm_config_cache = "${WORKSPACE}/.npm-cache-backend" 
             }
             steps {
                 echo "Running Unit Testing..."
