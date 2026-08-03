@@ -358,13 +358,13 @@ pipeline {
                 docker { 
                     image 'anchore/syft:v1.48.0-debug'
                     // Force the container to run as the Jenkins host user
-                    args '-u 1001:1001 -v /var/run/docker.sock:/var/run/docker.sock'
+                    args '-u 1001:1001 -v /var/run/docker.sock:/var/run/docker.sock --entrypoint='
                 }
             } 
             steps {
                 dir('backend') {
                     echo 'Generating backend SBOM for Backend Docker Image...'
-                    sh 'scan ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} -o cyclonedx-json=sbom-backend.json'
+                    sh '/syft scan docker:${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG} -o cyclonedx-json=sbom-backend.json'
                 }
             }
             post {
