@@ -301,7 +301,7 @@ pipeline {
                             }
 
                             // BUILDS BACKEND IMAGE
-                            // sh "docker build -t ${IMAGE_NAME}:${env.APP_VERSION} ." <---- will come back to this, using branch name for now
+                            // sh "docker build -t ${IMAGE_NAME}:${env.APP_VERSION} ." <--- will come back to this, using branch name for now
                             // sh "docker build -t ${IMAGE_NAME}:${env.BRANCH_NAME} ."
                             // sh "docker build -t ${IMAGE_NAME}:${COMMIT_HASH} ."
                         }
