@@ -488,7 +488,7 @@ pipeline {
                             // Push each image stored in the map
                             images.each { name, img ->
                                 img.push()
-                                //img.push('latest')
+                                img.push('staging')
                             }
                         }
                     }
