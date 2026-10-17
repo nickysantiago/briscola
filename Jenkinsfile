@@ -297,7 +297,21 @@ pipeline {
                                 def packageJson = readJSON file: 'package.json'
                                 env.APP_VERSION = packageJson.version
                                 // backendImage = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
-                                images['frontendImage']  = docker.build("${DOCKER_USER}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}")
+
+                                /*
+                                Build Frontend Docker Image
+                                *** Note ***
+                                I added 2 labels to the image: revision and build number
+                                - The revision label will change the image digest with any commit
+                                - The build number will change the image digest any time a build is triggered
+                                The point is to create a new image digest (hash), mainly for troubleshooting purposes
+                                because argoCD Image Updater will only trigger with a new image digest (hash)
+                                Feel free to remove the labels (especially the build number label) when all set with ArgoCD    
+                                */
+                                images['frontendImage']  = docker.build(
+                                    "${DOCKER_USER}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}",
+                                    "--label org.opencontainers.image.revision=${IMAGE_TAG} --label build.number=${env.BUILD_NUMBER} ."
+                                    )
                             }
 
                             // BUILDS BACKEND IMAGE
@@ -317,7 +331,21 @@ pipeline {
                                 def packageJson = readJSON file: 'package.json'
                                 env.APP_VERSION = packageJson.version
                                 // backendImage = docker.build("${IMAGE_NAME}:${COMMIT_HASH}")
-                                images['backendImage']  = docker.build("${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}")
+
+                                /*
+                                Build Backend Docker Image
+                                *** Note ***
+                                I added 2 labels to the image: revision and build number
+                                - The revision label will change the image digest with any commit
+                                - The build number will change the image digest any time a build is triggered
+                                The point is to create a new image digest (hash), mainly for troubleshooting purposes
+                                because argoCD Image Updater will only trigger with a new image digest (hash)
+                                Feel free to remove the labels (especially the build number label) when all set with ArgoCD    
+                                */
+                                images['backendImage']  = docker.build(
+                                    "${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}",
+                                    "--label org.opencontainers.image.revision=${IMAGE_TAG} --label build.number=${env.BUILD_NUMBER} ."
+                                    )
                             }
 
                             // BUILDS BACKEND IMAGE
