@@ -3,8 +3,8 @@
 //
 // NOTE: the previous pipeline called off-repo helper scripts on the home server
 // (build.sh / deploy.sh / cleanup.sh under ${COMPOSE_DIR}). Those scripts are NOT in
-// this repository and were written for the old single-container setup. Either update
-// them to run the docker-compose commands below, or keep this inlined version.
+// this repository and were written for the old single-container setup. 
+// Either update them to run the docker-compose commands below, or keep this inlined version.
 // Assumes ${COMPOSE_DIR} on the home server is a git checkout of this repo that
 // contains docker-compose.yml. Uses `docker-compose` (v1) — switch to `docker compose`
 // if the home server has the Compose v2 plugin.
