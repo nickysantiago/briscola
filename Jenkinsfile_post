@@ -1,0 +1,55 @@
+pipeline {
+    agent {
+        label 'jenkins-agent'
+    }
+
+    environment {
+        STAGING_URL = 'https://brisca.nsantiago.me'
+    }
+
+    stages {
+        stage('DAST Scan Against Staging') {
+            agent {
+                docker {
+                    image 'zaproxy/zap-stable:latest'
+                    // Jenkins expands $WORKSPACE when it builds the docker run command
+                    args '--tmpfs /zap/wrk:rw,mode=1777'
+                }
+            }
+            environment {
+                HOME = '/tmp' // ZAP writes ~/.ZAP; the container user has no real home
+                JAVA_TOOL_OPTIONS = '-Duser.home=/tmp' // Java ignores $HOME
+            }
+            steps {
+                script {
+                    def rc = sh(
+                        returnStatus: true,
+                        script: 'zap-baseline.py -t "$STAGING_URL" -r dast-staging-report.html'
+                        )
+
+                    sh 'cp /zap/wrk/dast-staging-report.* . 2>/dev/null || true'
+                    
+                    if (rc == 1)      
+                    { 
+                        error 'ZAP: FAIL-level alerts' 
+                    }
+                    /* Commenting out for now so the builds are not stable
+                    else if (rc == 2) 
+                    { 
+                        unstable 'ZAP: WARN-level alerts' 
+                    }
+                    */
+                    else if (rc != 0) 
+                    { 
+                        error "ZAP: scan error (exit ${rc})" 
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'dast-staging-report.html', allowEmptyArchive: true
+                }
+            }
+        }
+    }
+}
