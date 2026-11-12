@@ -11,7 +11,10 @@ version: "2.4"
 
 services:
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}   # served as /version.json
     image: brisca-frontend
     container_name: brisca-frontend
     ports:
@@ -21,7 +24,10 @@ services:
     restart: unless-stopped
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}   # reported by /api/status
     image: brisca-backend
     container_name: brisca-backend
     environment:

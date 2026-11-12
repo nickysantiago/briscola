@@ -308,9 +308,10 @@ pipeline {
                                 because argoCD Image Updater will only trigger with a new image digest (hash)
                                 Feel free to remove the labels (especially the build number label) when all set with ArgoCD    
                                 */
+                                // GIT_COMMIT build arg is served as /version.json for the post-deploy smoke tests
                                 images['frontendImage']  = docker.build(
                                     "${DOCKER_USER}/${FRONTEND_IMAGE_NAME}:${IMAGE_TAG}",
-                                    "--label org.opencontainers.image.revision=${IMAGE_TAG} --label build.number=${env.BUILD_NUMBER} ."
+                                    "--build-arg GIT_COMMIT=${env.GIT_COMMIT} --label org.opencontainers.image.revision=${IMAGE_TAG} --label build.number=${env.BUILD_NUMBER} ."
                                     )
                             }
 
@@ -342,9 +343,10 @@ pipeline {
                                 because argoCD Image Updater will only trigger with a new image digest (hash)
                                 Feel free to remove the labels (especially the build number label) when all set with ArgoCD    
                                 */
+                                // GIT_COMMIT build arg is reported by /api/status for the post-deploy smoke tests
                                 images['backendImage']  = docker.build(
                                     "${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}",
-                                    "--label org.opencontainers.image.revision=${IMAGE_TAG} --label build.number=${env.BUILD_NUMBER} ."
+                                    "--build-arg GIT_COMMIT=${env.GIT_COMMIT} --label org.opencontainers.image.revision=${IMAGE_TAG} --label build.number=${env.BUILD_NUMBER} ."
                                     )
                             }
 

@@ -24,12 +24,14 @@
 
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { Server } from 'socket.io';
 
 import { createGame, applyPlayerMove, toSnapshot, STATE_VERSION } from './game/engine.js';
 import * as store from './store.js';
 import { withLock } from './lock.js';
 import { createMultiplayer } from './multiplayer.js';
+import { createHttpHandler } from './http.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -47,15 +49,11 @@ function legalTurn(state, index) {
   return Number.isInteger(index) && index >= 0 && index < state.seats.A.hand.length;
 }
 
-const httpServer = createServer((req, res) => {
-  if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('ok');
-    return;
-  }
-  res.writeHead(404);
-  res.end();
-});
+// Build info for /api/status. GIT_COMMIT is baked in by the Dockerfile's build arg.
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+const build = { commit: process.env.GIT_COMMIT || 'unknown', version: pkg.version };
+
+const httpServer = createServer(createHttpHandler({ pingStore: store.pingStore, build }));
 
 const io = new Server(httpServer, {
   // Same-origin via the nginx proxy; no CORS needed.

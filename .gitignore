@@ -17,3 +17,6 @@ frontend/build/
 # Logs
 *.log
 npm-debug.log*
+
+# Live test reports (tests/)
+tests/reports/

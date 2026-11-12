@@ -3,11 +3,54 @@ pipeline {
         label 'jenkins-agent'
     }
 
+    parameters {
+        /*
+        Commit that should be live: full SHA, git short SHA, or the 5-char image tag.
+        Leave empty to only require the frontend and backend to report the same commit.
+        NOTE: a parameterized job must be triggered via /buildWithParameters (not /build)
+        */
+        string(name: 'EXPECTED_VERSION', defaultValue: '', description: 'Commit that should be deployed (full SHA, short SHA, or 5-char image tag). Empty = frontend and backend just need to match.')
+    }
+
     environment {
         STAGING_URL = 'https://brisca.nsantiago.me'
     }
 
     stages {
+        /*
+        Gate for every later stage: waits until the expected build is live, then checks
+        the app shell, static assets, /api/status (Redis), the Socket.io WebSocket upgrade,
+        and one solo game round trip. Tests live in tests/smoke - see tests/README.md
+        */
+        stage('Smoke Test Against Staging') {
+            agent {
+                docker {
+                    image 'node:lts-slim'
+                    // Force the container to run as the Jenkins host user
+                    args '-u 1001:1001'
+                    reuseNode true
+                }
+            }
+            environment {
+                npm_config_cache = "${WORKSPACE}/.npm-cache-tests"
+                BASE_URL = "${STAGING_URL}"
+                // EXPECTED_VERSION is read from the build parameter of the same name
+                VERSION_WAIT_SECONDS = '180'
+            }
+            steps {
+                dir('tests') {
+                    sh 'npm ci'
+                    sh 'npm run smoke:ci'
+                }
+            }
+            post {
+                always {
+                    junit testResults: 'tests/reports/smoke-junit.xml', allowEmptyResults: true
+                    archiveArtifacts artifacts: 'tests/reports/smoke-junit.xml', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('DAST Scan Against Staging') {
             agent {
                 docker {

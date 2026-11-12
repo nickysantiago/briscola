@@ -1,0 +1,20 @@
+{
+  "name": "brisca-live-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Black-box tests run against a deployed Brisca stack (BASE_URL)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "smoke": "node --test 'smoke/**/*.test.mjs'",
+    "smoke:ci": "mkdir -p reports && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=reports/smoke-junit.xml 'smoke/**/*.test.mjs'"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  },
+  "overrides": {
+    "ws": "^8.21.0"
+  }
+}

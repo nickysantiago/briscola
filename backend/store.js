@@ -39,6 +39,12 @@ async function closeStore() {
   if (client.isOpen) await client.quit();
 }
 
+// Health probe: fails fast while the client is reconnecting instead of queueing.
+async function pingStore() {
+  if (!client.isReady) throw new Error('redis client not ready');
+  await client.ping();
+}
+
 // ------------------------------------------------------------------
 // Game state
 // ------------------------------------------------------------------
@@ -126,6 +132,7 @@ async function listActiveMp() {
 export {
   connectStore,
   closeStore,
+  pingStore,
   loadState,
   saveState,
   deleteGame,

@@ -25,6 +25,7 @@ container restarts.
 ```
 frontend/   SvelteKit + Tailwind app (src/, static/cards/) + nginx.conf + Dockerfile
 backend/    server.js, store.js, game/{constants,engine,ai}.js, tests
+tests/      live tests run against a deployed stack (smoke; see tests/README.md)
 docker-compose.yml
 ```
 
@@ -62,6 +63,17 @@ docker run -d --name brisca-redis-dev -p 6379:6379 redis:7-alpine
 REDIS_URL=redis://localhost:6379 node server.js &
 node scripts/socket-smoke.mjs
 ```
+
+Post-deploy smoke tests live in `tests/` and run against any URL. `Jenkinsfile_post`
+runs them against staging before the DAST scan. See [tests/README.md](tests/README.md).
+
+```bash
+cd tests && npm ci
+BASE_URL=http://localhost:8080 npm run smoke
+```
+
+The backend's `GET /api/status` (proxied by nginx) and the frontend's `GET /version.json`
+report the commit each image was built from (`GIT_COMMIT` build arg).
 
 ## How it works
 

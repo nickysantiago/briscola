@@ -9,6 +9,11 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Commit this image was built from, served as /version.json so post-deploy tests
+# can tell which build is live. Declared after the build to keep it cached.
+ARG GIT_COMMIT=unknown
+RUN printf '{"commit":"%s"}\n' "$GIT_COMMIT" > build/version.json
+
 # Serve stage: unchanged nginx-unprivileged runtime with the /socket.io proxy.
 FROM nginxinc/nginx-unprivileged
 
