@@ -51,48 +51,85 @@ pipeline {
             }
         }
 
-        stage('DAST Scan Against Staging') {
-            agent {
-                docker {
-                    image 'zaproxy/zap-stable:latest'
-                    // Jenkins expands $WORKSPACE when it builds the docker run command
-                    args '--tmpfs /zap/wrk:rw,mode=1777'
+        /*
+        Integration and DAST both need a healthy deploy (smoke passed) but not each other.
+        Integration drives the Socket.io protocol end to end with real clients: solo games,
+        lobbies, two-player games incl. disconnect/reconnect, and security guards.
+        Tests live in tests/integration - see tests/README.md
+        */
+        stage('Live Tests') {
+            parallel {
+                stage('Integration Tests Against Staging') {
+                    agent {
+                        docker {
+                            image 'node:lts-slim'
+                            // Force the container to run as the Jenkins host user
+                            args '-u 1001:1001'
+                            reuseNode true
+                        }
+                    }
+                    environment {
+                        npm_config_cache = "${WORKSPACE}/.npm-cache-tests"
+                        BASE_URL = "${STAGING_URL}"
+                    }
+                    steps {
+                        dir('tests') {
+                            sh 'npm ci'
+                            sh 'npm run integration:ci'
+                        }
+                    }
+                    post {
+                        always {
+                            junit testResults: 'tests/reports/integration-junit.xml', allowEmptyResults: true
+                            archiveArtifacts artifacts: 'tests/reports/integration-junit.xml', allowEmptyArchive: true
+                        }
+                    }
                 }
-            }
-            environment {
-                HOME = '/tmp' // ZAP writes ~/.ZAP; the container user has no real home
-                JAVA_TOOL_OPTIONS = '-Duser.home=/tmp' // Java ignores $HOME
-            }
-            steps {
-                script {
-                    def rc = sh(
-                        returnStatus: true,
-                        script: 'zap-baseline.py -t "$STAGING_URL" -r dast-staging-report.html'
-                        )
 
-                    sh 'cp /zap/wrk/dast-staging-report.* . 2>/dev/null || true'
+                stage('DAST Scan Against Staging') {
+                    agent {
+                        docker {
+                            image 'zaproxy/zap-stable:latest'
+                            // Jenkins expands $WORKSPACE when it builds the docker run command
+                            args '--tmpfs /zap/wrk:rw,mode=1777'
+                        }
+                    }
+                    environment {
+                        HOME = '/tmp' // ZAP writes ~/.ZAP; the container user has no real home
+                        JAVA_TOOL_OPTIONS = '-Duser.home=/tmp' // Java ignores $HOME
+                    }
+                    steps {
+                        script {
+                            def rc = sh(
+                                returnStatus: true,
+                                script: 'zap-baseline.py -t "$STAGING_URL" -r dast-staging-report.html'
+                                )
+
+                            sh 'cp /zap/wrk/dast-staging-report.* . 2>/dev/null || true'
                     
-                    if (rc == 1)      
-                    { 
-                        error 'ZAP: FAIL-level alerts' 
+                            if (rc == 1)      
+                            { 
+                                error 'ZAP: FAIL-level alerts' 
+                            }
+                            /* New WARN discoverd
+                            Changing to simple echo from unstable so the build can continue
+                            */
+                            else if (rc == 2) 
+                            { 
+                                // unstable 'ZAP: WARN-level alerts' 
+                                echo "New WARN vulns have been found. Continuing build...."
+                            }
+                            else if (rc != 0) 
+                            { 
+                                error "ZAP: scan error (exit ${rc})" 
+                            }
+                        }
                     }
-                    /* New WARN discoverd
-                    Changing to simple echo from unstable so the build can continue
-                    */
-                    else if (rc == 2) 
-                    { 
-                        // unstable 'ZAP: WARN-level alerts' 
-                        echo "New WARN vulns have been found. Continuing build...."
+                    post {
+                        always {
+                            archiveArtifacts artifacts: 'dast-staging-report.html', allowEmptyArchive: true
+                        }
                     }
-                    else if (rc != 0) 
-                    { 
-                        error "ZAP: scan error (exit ${rc})" 
-                    }
-                }
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'dast-staging-report.html', allowEmptyArchive: true
                 }
             }
         }

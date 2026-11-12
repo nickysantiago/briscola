@@ -49,6 +49,13 @@ function legalTurn(state, index) {
   return Number.isInteger(index) && index >= 0 && index < state.seats.A.hand.length;
 }
 
+// Client payloads are untrusted: a `null` or primitive would throw on property
+// access, and a throw outside a handler's try is an unhandled rejection that
+// takes the whole process down.
+function asObject(payload) {
+  return payload !== null && typeof payload === 'object' ? payload : {};
+}
+
 // Build info for /api/status. GIT_COMMIT is baked in by the Dockerfile's build arg.
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 const build = { commit: process.env.GIT_COMMIT || 'unknown', version: pkg.version };
@@ -65,10 +72,10 @@ const mp = createMultiplayer({ store });
 io.on('connection', (socket) => {
   mp.bindConnection(socket);
 
-  socket.on('newGame', async (payload = {}) => {
+  socket.on('newGame', async (payload) => {
     try {
       const gameId = randomUUID();
-      const state = createGame(payload.difficulty, gameId);
+      const state = createGame(asObject(payload).difficulty, gameId);
       await store.saveState(state);
       socket.emit('gameState', toSnapshot(state, 'A'));
     } catch (err) {
@@ -77,9 +84,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('resume', async (payload = {}) => {
+  socket.on('resume', async (payload) => {
     try {
-      const state = await loadCurrentState(payload.gameId);
+      const state = await loadCurrentState(asObject(payload).gameId);
       if (!state || state.mode !== 'solo') {
         socket.emit('errorState', { code: 'unknownGame', message: 'No saved game found.' });
         return;
@@ -91,7 +98,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('playCard', async (payload = {}) => {
+  socket.on('playCard', async (raw) => {
+    const payload = asObject(raw);
     const { gameId, index, seq } = payload;
     try {
       const routed = await loadCurrentState(gameId);

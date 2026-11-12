@@ -25,7 +25,7 @@ container restarts.
 ```
 frontend/   SvelteKit + Tailwind app (src/, static/cards/) + nginx.conf + Dockerfile
 backend/    server.js, store.js, game/{constants,engine,ai}.js, tests
-tests/      live tests run against a deployed stack (smoke; see tests/README.md)
+tests/      live tests run against a deployed stack (smoke, integration; see tests/README.md)
 docker-compose.yml
 ```
 
@@ -57,19 +57,16 @@ npm install
 
 # Unit + golden-master tests (engine rules, draw logic, AI, full-game invariants):
 npm test
-
-# Headless end-to-end protocol test (needs a running backend + redis):
-docker run -d --name brisca-redis-dev -p 6379:6379 redis:7-alpine
-REDIS_URL=redis://localhost:6379 node server.js &
-node scripts/socket-smoke.mjs
 ```
 
-Post-deploy smoke tests live in `tests/` and run against any URL. `Jenkinsfile_post`
-runs them against staging before the DAST scan. See [tests/README.md](tests/README.md).
+Live tests that run against a deployed stack (any URL) live in `tests/`.
+`Jenkinsfile_post` runs them against staging after each deploy: smoke first as a
+gate, then integration and the DAST scan in parallel. See [tests/README.md](tests/README.md).
 
 ```bash
 cd tests && npm ci
-BASE_URL=http://localhost:8080 npm run smoke
+BASE_URL=http://localhost:8080 npm run smoke         # ~1s: right build live, wired end to end
+BASE_URL=http://localhost:8080 npm run integration   # ~15s: full Socket.io protocol, solo + multiplayer
 ```
 
 The backend's `GET /api/status` (proxied by nginx) and the frontend's `GET /version.json`

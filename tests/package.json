@@ -9,7 +9,9 @@
   },
   "scripts": {
     "smoke": "node --test 'smoke/**/*.test.mjs'",
-    "smoke:ci": "mkdir -p reports && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=reports/smoke-junit.xml 'smoke/**/*.test.mjs'"
+    "smoke:ci": "mkdir -p reports && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=reports/smoke-junit.xml 'smoke/**/*.test.mjs'",
+    "integration": "node --test 'integration/**/*.test.mjs'",
+    "integration:ci": "mkdir -p reports && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=reports/integration-junit.xml 'integration/**/*.test.mjs'"
   },
   "devDependencies": {
     "socket.io-client": "^4.8.1"
