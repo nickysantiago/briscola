@@ -77,6 +77,28 @@ test('create/join: rejects missing or oversized names', async () => {
   assert.equal(s.last('errorState').code, 'badName');
 });
 
+test('non-object payloads get the normal validation error, not a handler failure', async (t) => {
+  const consoleError = t.mock.method(console, 'error', () => {});
+  const { mp, bind } = setup();
+  const s = bind();
+  const expected = {
+    createMultiplayerGame: 'badName',
+    joinMultiplayerGame: 'badName',
+    reconnectMultiplayerGame: 'unknownGame',
+    endGame: 'unknownGame',
+    requestRematch: 'unknownGame'
+  };
+  for (const payload of [null, undefined, 42, 'junk', true]) {
+    for (const [event, code] of Object.entries(expected)) {
+      await s.send(event, payload);
+      assert.equal(s.last('errorState').code, code, `${event}(${payload})`);
+    }
+    await mp.handlePlayCard(s, payload); // server.js routes multi playCard here
+    assert.equal(s.last('errorState').code, 'unknownGame', `playCard(${payload})`);
+  }
+  assert.equal(consoleError.mock.callCount(), 0, 'a handler threw on a junk payload');
+});
+
 test('join: creates the game, seats both players, arms the turn timer', async () => {
   const { store, now, bind } = setup({ rng: rngQueue([0.1234]) });
   const host = bind();

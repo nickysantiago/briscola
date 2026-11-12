@@ -30,6 +30,7 @@ import {
   STATE_VERSION
 } from './game/engine.js';
 import { withLock } from './lock.js';
+import { asObject } from './payload.js';
 
 const DEFAULTS = {
   TURN_MS: 60_000,                    // per-turn clock
@@ -553,9 +554,12 @@ export function createMultiplayer({ store, now = Date.now, rng = Math.random, co
   // Socket wiring
   // ------------------------------------------------------------------
 
+  // Every handler runs inside a try (an error replies `${name}Failed` instead
+  // of crashing) and sees a payload that is always an object, so junk like
+  // `null` gets a normal validation error rather than a TypeError.
   const guarded = (name, fn) => async (socket, payload) => {
     try {
-      await fn(socket, payload);
+      await fn(socket, asObject(payload));
     } catch (err) {
       console.error(`[mp ${name}]`, err);
       sendError(socket, `${name}Failed`, 'Something went wrong. Please try again.');

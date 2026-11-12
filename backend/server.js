@@ -32,6 +32,7 @@ import * as store from './store.js';
 import { withLock } from './lock.js';
 import { createMultiplayer } from './multiplayer.js';
 import { createHttpHandler } from './http.js';
+import { asObject } from './payload.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -47,13 +48,6 @@ async function loadCurrentState(gameId) {
 // act on (either they lead, or the bot has already led the pending card).
 function legalTurn(state, index) {
   return Number.isInteger(index) && index >= 0 && index < state.seats.A.hand.length;
-}
-
-// Client payloads are untrusted: a `null` or primitive would throw on property
-// access, and a throw outside a handler's try is an unhandled rejection that
-// takes the whole process down.
-function asObject(payload) {
-  return payload !== null && typeof payload === 'object' ? payload : {};
 }
 
 // Build info for /api/status. GIT_COMMIT is baked in by the Dockerfile's build arg.
