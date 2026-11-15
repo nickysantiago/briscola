@@ -93,9 +93,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('playCard', async (raw) => {
-    const payload = asObject(raw);
-    const { gameId, index, seq } = payload;
     try {
+      const payload = asObject(raw);
+      const { gameId, index, seq } = payload;
       const routed = await loadCurrentState(gameId);
       if (routed && routed.mode === 'multi') {
         // Multiplayer moves are validated against the socket's seat session

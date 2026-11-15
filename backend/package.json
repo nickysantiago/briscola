@@ -9,13 +9,38 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "node --experimental-test-coverage --test"
+    "lint": "eslint .",
+    "test": "c8 node --test"
+  },
+  "c8": {
+    "all": true,
+    "include": [
+      "**/*.js"
+    ],
+    "exclude": [
+      "test/**",
+      "scripts/**",
+      "coverage/**",
+      "eslint.config.js"
+    ],
+    "reporter": [
+      "text"
+    ],
+    "reporterOptions": {
+      "text": {
+        "maxCols": 0
+      }
+    }
   },
   "dependencies": {
     "redis": "^4.7.0",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "c8": "^12.0.0",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
     "socket.io-client": "^4.8.1"
   },
   "overrides": {

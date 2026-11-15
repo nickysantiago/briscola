@@ -5,7 +5,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMultiplayer } from '../multiplayer.js';
-import { actorSeat } from '../game/engine.js';
 import { createMemoryStore, fakeSocket, fakeClock, rngQueue } from './helpers/fakes.js';
 
 const TURN_MS = 60_000;
