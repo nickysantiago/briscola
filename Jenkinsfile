@@ -60,6 +60,9 @@ pipeline {
                     agent { 
                         docker { 
                             image 'node:lts-slim' 
+                            // Run in the pipeline's main workspace instead of a separate one
+                            // (...@2), so the later stages find this node_modules
+                            reuseNode true
                         } 
                     }
                     environment { 
@@ -79,6 +82,9 @@ pipeline {
                     agent { 
                         docker { 
                             image 'node:lts-slim' 
+                            // Run in the pipeline's main workspace instead of a separate one
+                            // (...@2), so the later stages find this node_modules
+                            reuseNode true
                         } 
                     }
                     environment { 
@@ -100,6 +106,8 @@ pipeline {
                     agent {
                         docker { 
                             image 'node:lts-slim'
+                            // Same workspace as the Install stage (uses its node_modules)
+                            reuseNode true
                         }
                     } 
                     environment { 
@@ -116,6 +124,8 @@ pipeline {
                     agent {
                         docker { 
                             image 'node:lts-slim'
+                            // Same workspace as the Install stage (uses its node_modules)
+                            reuseNode true
                         }
                     } 
                     environment { 
@@ -170,11 +180,8 @@ pipeline {
                     steps {
                         echo "Running Snyk Code Test on Backend..."
                         // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
-                        /*
-                        || true operator ensure the pipeline continues the build even though
-                            there are multiple high severity vulns. that need to be addressed on a separate branch */
                         dir('backend') {
-                            sh 'snyk code test --severity-threshold=${SNYK_SEVERITY} > snyk-sast-backend-report.txt || true'
+                            sh 'snyk code test --severity-threshold=${SNYK_SEVERITY} > snyk-sast-backend-report.txt'
                         }
                     }
                     post {
@@ -193,6 +200,8 @@ pipeline {
                     agent {
                         docker { 
                             image 'node:lts-slim'
+                            // Same workspace as the Install stage (uses its node_modules)
+                            reuseNode true
                         }
                     } 
                     environment { 
@@ -269,6 +278,9 @@ pipeline {
                     image 'node:lts-slim'
                     // Force the container to run as the Jenkins host user
                     args '-u 1001:1001'
+                    // Same workspace as the Install stage: `npm test` needs the
+                    // devDependencies (c8, eslint) from its node_modules
+                    reuseNode true
                 }
             } 
             environment { 
@@ -473,6 +485,10 @@ pipeline {
             /*
              Note: NOT using the docker plugin in this stage
              Permission issue with the ".cache" directory 
+
+             node_modules is excluded because the Install stages now share this
+             workspace. Without the exclude, syft also lists build-tool binaries it
+             finds there (esbuild) instead of only what package-lock.json declares.
             */
             parallel {
                 stage('Frontend SBOM') {
@@ -484,6 +500,7 @@ pipeline {
                             -e XDG_CACHE_HOME=/src/.cache \
                             anchore/syft:v1.48.0-nonroot \
                             -o cyclonedx-json=/src/sbom-frontend.json \
+                            --exclude "./node_modules/**" \
                             dir:/src
                         '''
                     }
@@ -502,6 +519,7 @@ pipeline {
                             -e XDG_CACHE_HOME=/src/.cache \
                             anchore/syft:v1.48.0-nonroot \
                             -o cyclonedx-json=/src/sbom-backend.json \
+                            --exclude "./node_modules/**" \
                             dir:/src
                         '''
                     }
