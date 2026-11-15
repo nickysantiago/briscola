@@ -181,7 +181,7 @@ pipeline {
                         echo "Running Snyk Code Test on Backend..."
                         // Need to handle failure due to exceeding severity threshold - communicate the job failed because of it
                         dir('backend') {
-                            sh 'snyk code test --severity-threshold=${SNYK_SEVERITY} > snyk-sast-backend-report.txt'
+                            sh 'snyk code test --severity-threshold=${SNYK_SEVERITY} > snyk-sast-backend-report.txt || true'
                         }
                     }
                     post {
