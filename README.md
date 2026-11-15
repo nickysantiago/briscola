@@ -25,7 +25,7 @@ container restarts.
 ```
 frontend/   SvelteKit + Tailwind app (src/, static/cards/) + nginx.conf + Dockerfile
 backend/    server.js, store.js, game/{constants,engine,ai}.js, tests
-tests/      live tests run against a deployed stack (smoke, integration; see tests/README.md)
+tests/      live tests run against a deployed stack (smoke, integration, e2e; see tests/README.md)
 docker-compose.yml
 ```
 
@@ -61,12 +61,13 @@ npm test
 
 Live tests that run against a deployed stack (any URL) live in `tests/`.
 `Jenkinsfile_post` runs them against staging after each deploy: smoke first as a
-gate, then integration and the DAST scan in parallel. See [tests/README.md](tests/README.md).
+gate, then integration, browser E2E and the DAST scan in parallel. See [tests/README.md](tests/README.md).
 
 ```bash
 cd tests && npm ci
 BASE_URL=http://localhost:8080 npm run smoke         # ~1s: right build live, wired end to end
 BASE_URL=http://localhost:8080 npm run integration   # ~15s: full Socket.io protocol, solo + multiplayer
+BASE_URL=http://localhost:8080 npm run e2e           # ~3 min: Playwright, Chromium + iPhone WebKit
 ```
 
 The backend's `GET /api/status` (proxied by nginx) and the frontend's `GET /version.json`

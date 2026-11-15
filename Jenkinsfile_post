@@ -52,10 +52,14 @@ pipeline {
         }
 
         /*
-        Integration and DAST both need a healthy deploy (smoke passed) but not each other.
-        Integration drives the Socket.io protocol end to end with real clients: solo games,
-        lobbies, two-player games incl. disconnect/reconnect, and security guards.
-        Tests live in tests/integration - see tests/README.md
+        Integration, E2E and DAST all need a healthy deploy (smoke passed) but not each other.
+        - Integration drives the Socket.io protocol end to end with real clients: solo games,
+          lobbies, two-player games incl. disconnect/reconnect, and security guards.
+        - E2E plays the game in real browsers (Chromium desktop + WebKit iPhone) via Playwright.
+        Tests live in tests/integration and tests/e2e - see tests/README.md
+        NOTE: tests/node_modules comes from the Smoke stage's npm ci (same workspace via
+        reuseNode). Don't npm ci in these parallel stages: it deletes node_modules first and
+        would pull it out from under the other stage.
         */
         stage('Live Tests') {
             parallel {
@@ -69,12 +73,10 @@ pipeline {
                         }
                     }
                     environment {
-                        npm_config_cache = "${WORKSPACE}/.npm-cache-tests"
                         BASE_URL = "${STAGING_URL}"
                     }
                     steps {
                         dir('tests') {
-                            sh 'npm ci'
                             sh 'npm run integration:ci'
                         }
                     }
@@ -82,6 +84,34 @@ pipeline {
                         always {
                             junit testResults: 'tests/reports/integration-junit.xml', allowEmptyResults: true
                             archiveArtifacts artifacts: 'tests/reports/integration-junit.xml', allowEmptyArchive: true
+                        }
+                    }
+                }
+
+                stage('E2E Tests Against Staging') {
+                    agent {
+                        docker {
+                            // Keep this tag in step with @playwright/test in tests/package.json
+                            image 'mcr.microsoft.com/playwright:v1.64.1-noble'
+                            // --ipc=host: Chromium needs more shared memory than Docker's default
+                            args '-u 1001:1001 --ipc=host'
+                            reuseNode true
+                        }
+                    }
+                    environment {
+                        HOME = '/tmp' // the Jenkins uid has no home inside the image
+                        BASE_URL = "${STAGING_URL}"
+                    }
+                    steps {
+                        dir('tests') {
+                            sh 'npm run e2e:ci'
+                        }
+                    }
+                    post {
+                        always {
+                            junit testResults: 'tests/reports/e2e-junit.xml', allowEmptyResults: true
+                            // HTML report (open index.html) + trace/screenshot/video of any failed test
+                            archiveArtifacts artifacts: 'tests/reports/e2e-html/**, tests/reports/e2e-artifacts/**', allowEmptyArchive: true
                         }
                     }
                 }

@@ -11,9 +11,12 @@
     "smoke": "node --test 'smoke/**/*.test.mjs'",
     "smoke:ci": "mkdir -p reports && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=reports/smoke-junit.xml 'smoke/**/*.test.mjs'",
     "integration": "node --test 'integration/**/*.test.mjs'",
-    "integration:ci": "mkdir -p reports && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=reports/integration-junit.xml 'integration/**/*.test.mjs'"
+    "integration:ci": "mkdir -p reports && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=reports/integration-junit.xml 'integration/**/*.test.mjs'",
+    "e2e": "playwright test",
+    "e2e:ci": "playwright test --retries=1"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "socket.io-client": "^4.8.1"
   },
   "overrides": {
