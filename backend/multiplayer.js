@@ -370,7 +370,7 @@ export function createMultiplayer({ store, now = Date.now, rng = Math.random, co
   // endGame {gameId} — only offered while the opponent is disconnected (or the
   // game is already over). Abandons the session; no winner recorded.
   // ------------------------------------------------------------------
-  async function handleEndGame(socket, payload = {}) {
+  async function handleEndGame(socket) {
     const session = sessions.get(socket.id);
     if (!session || session.kind !== 'game') {
       return sendError(socket, 'unknownGame', 'No saved game found.');
@@ -530,8 +530,13 @@ export function createMultiplayer({ store, now = Date.now, rng = Math.random, co
   function startSweep() {
     if (sweepTimer) return;
     sweepTimer = setInterval(async () => {
+      // Re-entrancy guard. A boolean test and an assignment cannot throw, and
+      // they have to stay out of the try: an overlapping tick that returned
+      // from inside it would run the finally and clear the running tick's flag.
+      /* eslint-disable no-restricted-syntax */
       if (sweeping) return;
       sweeping = true;
+      /* eslint-enable no-restricted-syntax */
       try {
         await sweepOnce();
       } catch (err) {

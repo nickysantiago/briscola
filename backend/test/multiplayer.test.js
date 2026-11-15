@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMultiplayer } from '../multiplayer.js';
 import { actorSeat } from '../game/engine.js';
-import { createMemoryStore, fakeSocket, fakeClock, rngQueue } from './helpers/fakes.js';
+import { createMemoryStore, fakeSocket, fakeClock } from './helpers/fakes.js';
 
 // Boot a fully-seated game and return everything a test needs.
 async function setupGame({ rng, config } = {}) {

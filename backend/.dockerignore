@@ -6,3 +6,4 @@ npm-debug.log
 snyk-*.txt
 sbom-*.json
 test-coverage-report.txt
+coverage

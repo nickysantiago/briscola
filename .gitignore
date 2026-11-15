@@ -20,3 +20,6 @@ npm-debug.log*
 
 # Live test reports (tests/)
 tests/reports/
+
+# Unit-test coverage data (c8)
+backend/coverage/
