@@ -274,7 +274,10 @@ pipeline {
             steps {
                 echo "Running Unit Testing..."
                 dir('backend') {
-                    sh 'npm test | tee test-coverage-report.txt'
+                    // A pipeline exits with its last command's status, so a plain
+                    // `npm test | tee` passes the stage even when tests fail. This
+                    // image's sh (dash) has no pipefail, hence bash.
+                    sh 'bash -o pipefail -c "npm test | tee test-coverage-report.txt"'
                 }
             }
             post {
